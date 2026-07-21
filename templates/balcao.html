@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Balcão{% endblock %}
+{% block content %}
+<h1>Balcão de Atendimento</h1>
+<div class="grid-stats">
+  <div class="stat"><div class="num">{{ aguardando|length }}</div><div class="label">Aguardando no balcão</div></div>
+  <div class="stat"><div class="num">{{ em_atendimento|length }}</div><div class="label">Em atendimento</div></div>
+  <div class="stat"><div class="num">{{ aguardando_medico|length }}</div><div class="label">Aguardando médico</div></div>
+</div>
+
+<div class="card">
+  <h2>Fila — aguardando no balcão</h2>
+  {% if aguardando %}
+  <table>
+    <thead><tr><th>Senha</th><th>Paciente</th><th>Tipo</th><th></th></tr></thead>
+    <tbody>
+      {% for s in aguardando %}
+      <tr>
+        <td><strong>{{ s | senha }}</strong>{% if s.prioridade %} <span class="badge" style="background:#b7791f">Prioritária</span>{% endif %}</td>
+        <td>{{ s.paciente_nome or '— (não identificado)' }}</td>
+        <td>{{ {'particular':'Particular','convenio':'Convênio'}.get(s.tipo_atendimento, '-') }}</td>
+        <td class="text-right">
+          <form method="post" action="{{ url_for('balcao_chamar', senha_id=s.id) }}">
+            <button class="btn" type="submit">📢 Chamar</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Ninguém na fila.</p>{% endif %}
+</div>
+
+{% if em_atendimento %}
+<div class="card">
+  <h2>Em atendimento no balcão</h2>
+  <table>
+    <thead><tr><th>Senha</th><th>Paciente</th><th></th></tr></thead>
+    <tbody>
+      {% for s in em_atendimento %}
+      <tr>
+        <td><strong>{{ s | senha }}</strong></td>
+        <td>{{ s.paciente_nome or '— (não identificado)' }}</td>
+        <td class="text-right"><a class="btn btn-small" href="{{ url_for('balcao_atender', senha_id=s.id) }}">Continuar atendimento</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Aguardando o médico</h2>
+  {% if aguardando_medico %}
+  <table>
+    <thead><tr><th>Senha</th><th>Paciente</th><th>Médico</th><th>Sala</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+      {% for s in aguardando_medico %}
+      <tr>
+        <td><strong>{{ s | senha }}</strong></td>
+        <td>{{ s.paciente_nome or '-' }}</td>
+        <td>{{ s.medico_nome or '-' }}</td>
+        <td>{{ s.sala or '-' }}</td>
+        <td>
+          {% if s.status == 'chamado' %}<span class="badge badge-confirmada">Chamado</span>
+          {% else %}<span class="badge badge-agendada">Aguardando</span>{% endif %}
+        </td>
+        <td class="text-right">
+          <form style="display:inline" method="post" action="{{ url_for('balcao_chamar_medico', senha_id=s.id) }}">
+            <button class="btn btn-small" type="submit">📺 Chamar no telão</button>
+          </form>
+          <a class="btn btn-small" style="background:#0B5FA5;" href="{{ url_for('atendimento_medico', senha_id=s.id) }}">🩺 Atendimento médico</a>
+          <form style="display:inline" method="post" action="{{ url_for('balcao_finalizar', senha_id=s.id) }}">
+            <button class="btn btn-small btn-secondary" type="submit">Finalizar</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Ninguém aguardando o médico.</p>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Usuários{% endblock %}
+{% block content %}
+<h1>Usuários do sistema</h1>
+<div class="actions">
+  <a class="btn" href="{{ url_for('usuarios_novo') }}">+ Novo usuário</a>
+</div>
+
+<div class="card">
+  <h2>Backup do sistema</h2>
+  <p class="muted">O sistema já faz um backup automático por dia. Use os botões abaixo para gerar uma cópia agora (ex.: antes de fechar a clínica).</p>
+  <form method="post" action="{{ url_for('backup_agora') }}" style="display:inline">
+    <button class="btn" type="submit">💾 Fazer backup agora</button>
+  </form>
+  <form method="post" action="{{ url_for('backup_baixar') }}" style="display:inline">
+    <button class="btn btn-secondary" type="submit">⬇️ Fazer backup e baixar</button>
+  </form>
+</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td>{{ u.nome }}</td>
+        <td>{{ u.login }}</td>
+        <td>{{ u.perfil }}</td>
+        <td><span class="badge {{ 'badge-atendida' if u.ativo else 'badge-cancelada' }}">{{ 'Ativo' if u.ativo else 'Inativo' }}</span></td>
+        <td class="text-right">
+          {% if u.id != g.user.id %}
+          <form style="display:inline" method="post" action="{{ url_for('usuarios_alternar_status', usuario_id=u.id) }}">
+            <button class="btn btn-small btn-secondary" type="submit">{{ 'Desativar' if u.ativo else 'Ativar' }}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

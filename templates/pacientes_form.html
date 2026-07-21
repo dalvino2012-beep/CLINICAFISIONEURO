@@ -1,0 +1,209 @@
+﻿{% extends "base.html" %}
+{% block title %}{{ 'Editar' if paciente else 'Novo' }} Paciente{% endblock %}
+{% block content %}
+<h1 style="margin-bottom:0.4rem;">{{ 'Editar' if paciente else 'Novo' }} Paciente</h1>
+<div class="card">
+  <form method="post" enctype="multipart/form-data" class="compacto">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="nome">Nome completo</label>
+        <input type="text" id="nome" name="nome" value="{{ paciente.nome if paciente else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label for="cpf">CPF</label>
+        <input type="text" id="cpf" name="cpf" value="{{ paciente.cpf if paciente else '' }}" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="data_nascimento">Data de nascimento</label>
+        <input type="date" id="data_nascimento" name="data_nascimento" value="{{ paciente.data_nascimento if paciente else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="telefone">Telefone</label>
+        <input type="text" id="telefone" name="telefone" value="{{ paciente.telefone if paciente else '' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="endereco">Endereço</label>
+      <input type="text" id="endereco" name="endereco" value="{{ paciente.endereco if paciente else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="historico">Histórico clínico</label>
+      <textarea id="historico" name="historico" rows="4">{{ paciente.historico if paciente else '' }}</textarea>
+    </div>
+    <div class="form-group">
+      <label for="observacoes">Observações sobre o paciente</label>
+      <textarea id="observacoes" name="observacoes" rows="4" placeholder="Anotações gerais, preferências, alertas, etc.">{{ paciente.observacoes if paciente else '' }}</textarea>
+    </div>
+    <div class="form-group">
+      <label for="anexos">Anexar arquivos (exames, laudos, imagens)</label>
+      <input type="file" id="anexos" name="anexos" multiple>
+      <p class="muted">Você pode selecionar vários arquivos. Tipos aceitos: PDF, imagens, Word, Excel, TXT (até 20 MB cada).</p>
+    </div>
+    <div class="form-group">
+      <label for="descricao_anexo">Descrição / observações dos arquivos anexados</label>
+      <textarea id="descricao_anexo" name="descricao_anexo" rows="6" placeholder="Descreva os arquivos que está anexando (ex.: exame de sangue de 10/07, raio-x do tórax...)."></textarea>
+    </div>
+    <button type="submit" class="btn">Salvar</button>
+    <a class="btn btn-secondary" href="{{ url_for('pacientes_lista') }}">Cancelar</a>
+  </form>
+</div>
+
+{% if paciente %}
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
+    <h2 style="margin:0;">Receitas e solicitações de exames</h2>
+    {% if pode_receita() %}
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <a class="btn" href="{{ url_for('receitas_nova', paciente_id=paciente.id, tipo='receita', medico_id=g.user.medico_id or '') }}">💊 Receita 1 via</a>
+      <a class="btn" style="background:#b7791f;" href="{{ url_for('receitas_nova', paciente_id=paciente.id, tipo='controlada', medico_id=g.user.medico_id or '') }}">📑 Receita 2 vias (controlada)</a>
+      <a class="btn btn-secondary" href="{{ url_for('receitas_nova', paciente_id=paciente.id, tipo='exame', medico_id=g.user.medico_id or '') }}">🧪 Exames</a>
+    </div>
+    {% endif %}
+  </div>
+  {% if not pode_receita() %}
+  <p class="muted" style="margin-top:0.5rem;">As receitas são emitidas e impressas pelo médico do paciente na consulta.</p>
+  {% endif %}
+
+  {% if pode_receita() %}
+  <form method="post" action="{{ url_for('receita_rapida', paciente_id=paciente.id) }}" style="margin-top:1rem; border-top:1px solid var(--border); padding-top:1rem;">
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 260px;">
+        <label for="tipo-rapido">Tipo</label>
+        <select id="tipo-rapido" name="tipo">
+          <option value="receita">Receita (1 via)</option>
+          <option value="controlada">Receita controlada (2 vias)</option>
+          <option value="exame">Solicitação de exames</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="conteudo-rapido">Digite a receita / solicitação (um item por linha)</label>
+      <textarea id="conteudo-rapido" name="conteudo" rows="5" placeholder="Ex.: Amoxicilina 500mg — 1 comprimido de 8/8h por 7 dias&#10;Dipirona 1g — em caso de dor"></textarea>
+    </div>
+    <button class="btn" type="submit">🖨️ Gerar e imprimir</button>
+  </form>
+  {% endif %}
+
+  {% if receitas %}
+  <form method="post" action="{{ url_for('imprimir_documentos', paciente_id=paciente.id) }}" target="_blank">
+  <table style="margin-top:1rem;">
+    <thead>
+      <tr>
+        {% if pode_receita() %}<th style="width:70px; text-align:center;">Imprimir</th>{% endif %}
+        <th>Data</th><th>Tipo</th><th>Médico</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rec in receitas %}
+      <tr>
+        {% if pode_receita() %}<td style="text-align:center;"><input type="checkbox" class="rec-chk" name="receita_ids" value="{{ rec.id }}"></td>{% endif %}
+        <td>{{ rec.data }}</td>
+        <td>{{ {'receita':'Receita','exame':'Exames','ambos':'Receita + Exames','controlada':'Controlada (2 vias)'}.get(rec.tipo, rec.tipo) }}</td>
+        <td>{{ rec.medico_nome or '-' }}</td>
+        <td class="text-right">
+          {% if pode_receita() %}
+          <a class="btn btn-small" href="{{ url_for('receita_ver', receita_id=rec.id) }}">Abrir / Imprimir</a>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if pode_receita() %}
+  <div style="margin-top:0.8rem; display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+    <button type="button" class="btn btn-small btn-secondary" onclick="marcarRec(true)">Marcar todas</button>
+    <button type="button" class="btn btn-small btn-secondary" onclick="marcarRec(false)">Limpar</button>
+    <button type="submit" class="btn">🖨️ Imprimir marcadas</button>
+  </div>
+  <p class="muted" style="margin-top:0.4rem;">Marque no quadradinho as receitas que deseja imprimir e clique em <strong>Imprimir marcadas</strong> (abre um PDF com todas as marcadas juntas).</p>
+  {% endif %}
+  </form>
+  {% else %}
+  <p class="muted" style="margin-top:0.8rem;">Nenhuma receita emitida ainda.</p>
+  {% endif %}
+</div>
+<script>
+  function marcarRec(v) { document.querySelectorAll('.rec-chk').forEach(function (c) { c.checked = v; }); }
+</script>
+
+
+<div class="card">
+  <h2>Evolução / observações do médico (por consulta)</h2>
+  {% if pode_receita() %}
+  <p class="muted">Escreva a observação desta consulta e clique em <strong>Finalizar consulta</strong>. Ela desce para o histórico abaixo (só leitura) e o campo fica em branco para a próxima consulta.</p>
+  <form method="post" action="{{ url_for('evolucao_add', paciente_id=paciente.id) }}" style="margin-bottom:1.2rem;">
+    <div class="form-group" style="margin-bottom:0.5rem;">
+      <label for="evolucao-texto">Consulta de hoje — queixa, exame clínico, diagnóstico, conduta, evolução</label>
+      <textarea id="evolucao-texto" name="texto" rows="6" placeholder="Escreva aqui a observação/evolução desta consulta..."></textarea>
+    </div>
+    <button class="btn" type="submit">✔️ Finalizar consulta (salvar no histórico)</button>
+  </form>
+  {% else %}
+  <p class="muted">Histórico permanente de consultas — só leitura.</p>
+  {% endif %}
+
+  <h3 style="margin:0.6rem 0 0.4rem; border-top:1px solid var(--border); padding-top:0.8rem;">Consultas anteriores (histórico)</h3>
+  {% if evolucoes %}
+  {% if pode_receita() %}
+  <form method="post" action="{{ url_for('imprimir_documentos', paciente_id=paciente.id) }}" target="_blank">
+  {% endif %}
+    {% for e in evolucoes %}
+    <div style="border-bottom:1px solid #dde5e2; padding:0.6rem 0; display:flex; gap:0.6rem;">
+      {% if pode_receita() %}<input type="checkbox" class="ev-chk" name="evolucao_ids" value="{{ e.id }}" style="margin-top:0.2rem;">{% endif %}
+      <div style="flex:1;">
+        <div class="muted">{{ e.criado_em }} — {{ e.medico_nome or 'Médico' }}{% if e.convenio %} · {{ e.convenio }}{% endif %}</div>
+        <div style="white-space:pre-wrap;">{{ e.texto }}</div>
+      </div>
+    </div>
+    {% endfor %}
+    {% if pode_receita() %}
+    <div style="margin-top:0.8rem; display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+      <button type="button" class="btn btn-small btn-secondary" onclick="marcarEv(true)">Marcar todas</button>
+      <button type="button" class="btn btn-small btn-secondary" onclick="marcarEv(false)">Limpar</button>
+      <button type="submit" class="btn">🖨️ Imprimir selecionadas</button>
+    </div>
+    <p class="muted" style="margin-top:0.4rem;">Marque as consultas anteriores que deseja imprimir e clique em <strong>Imprimir selecionadas</strong>.</p>
+  </form>
+  {% endif %}
+  {% else %}
+  <p class="muted">Nenhuma consulta registrada ainda.</p>
+  {% endif %}
+</div>
+<script>
+  function marcarEv(v) { document.querySelectorAll('.ev-chk').forEach(function (c) { c.checked = v; }); }
+</script>
+
+<div class="card">
+  <h2>Arquivos anexados</h2>
+  {% if anexos %}
+  <table>
+    <thead>
+      <tr><th>Arquivo</th><th>Descrição</th><th>Enviado em</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for a in anexos %}
+      <tr>
+        <td><a href="{{ url_for('anexo_baixar', anexo_id=a.id) }}">{{ a.nome_original }}</a></td>
+        <td>{{ a.descricao or '-' }}</td>
+        <td>{{ a.criado_em }}</td>
+        <td class="text-right">
+          <a class="btn btn-small" href="{{ url_for('anexo_baixar', anexo_id=a.id) }}">Baixar</a>
+          <form style="display:inline" method="post" action="{{ url_for('anexo_excluir', anexo_id=a.id) }}" onsubmit="return confirm('Remover este anexo?');">
+            <button class="btn btn-small btn-secondary" type="submit">Excluir</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhum arquivo anexado ainda. Use o campo acima para enviar exames e documentos.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+

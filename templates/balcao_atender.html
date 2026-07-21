@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Atendimento {{ s | senha }}{% endblock %}
+{% block content %}
+<h1>Atendimento — Senha {{ s | senha }}</h1>
+
+{% if consulta %}
+<div class="card" style="background:#eaf3f0;">
+  <strong>Agendamento do dia:</strong>
+  {{ consulta.hora }} — Dr(a). {{ consulta.medico_nome }}
+  · Tipo: {{ {'particular':'Particular','convenio':'Convênio'}.get(consulta.tipo_atendimento, '-') }}
+  {% if consulta.convenio %} ({{ consulta.convenio }}){% endif %}
+</div>
+{% elif s.paciente_id and consultas_hoje %}
+<div class="card" style="background:#fff8e6;">
+  <strong>Agendamentos deste paciente hoje:</strong>
+  <ul>
+    {% for c in consultas_hoje %}<li>{{ c.hora }} — {{ c.medico_nome }} ({{ {'particular':'Particular','convenio':'Convênio'}.get(c.tipo_atendimento, '-') }})</li>{% endfor %}
+  </ul>
+</div>
+{% elif not s.paciente_id %}
+<div class="card" style="background:#fbeceb;">Paciente não identificado no totem. Selecione o paciente e o médico abaixo.</div>
+{% endif %}
+
+<div class="card">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="paciente_id">Paciente</label>
+        <select id="paciente_id" name="paciente_id">
+          <option value="">— selecione —</option>
+          {% for p in pacientes %}
+          <option value="{{ p.id }}" {{ 'selected' if s.paciente_id == p.id }}>{{ p.nome }} — {{ p.cpf }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="medico_id">Médico</label>
+        <select id="medico_id" name="medico_id">
+          <option value="">— selecione —</option>
+          {% for m in medicos %}
+          <option value="{{ m.id }}"
+            {{ 'selected' if (consulta and consulta.medico_id == m.id) or s.medico_id == m.id }}>
+            {{ m.nome }} — {{ m.especialidade }}{% if m.sala %} (Sala {{ m.sala }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <input type="hidden" name="consulta_id" value="{{ consulta.id if consulta else (s.consulta_id or '') }}">
+
+    <div class="form-group">
+      <label>Tipo de atendimento</label>
+      <label style="font-weight:400;display:inline-block;margin-right:1.5rem;">
+        <input type="radio" name="tipo_atendimento" value="particular" onclick="mostrar('particular')"
+          {{ 'checked' if (s.tipo_atendimento or 'particular') == 'particular' }}> Particular
+      </label>
+      <label style="font-weight:400;display:inline-block;">
+        <input type="radio" name="tipo_atendimento" value="convenio" onclick="mostrar('convenio')"
+          {{ 'checked' if s.tipo_atendimento == 'convenio' }}> Convênio
+      </label>
+    </div>
+
+    <div id="bloco-particular">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="valor">Valor da consulta (R$)</label>
+          <input type="text" id="valor" name="valor" inputmode="decimal" value="{{ ('%.2f'|format(s.valor)) if s.valor else '' }}" placeholder="Ex.: 250,00">
+        </div>
+        <div class="form-group">
+          <label for="forma_pagamento">Forma de pagamento</label>
+          <select id="forma_pagamento" name="forma_pagamento">
+            {% for fp in ['Dinheiro','Pix','Cartão de débito','Cartão de crédito'] %}
+            <option value="{{ fp }}" {{ 'selected' if s.forma_pagamento == fp }}>{{ fp }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="bloco-convenio">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="convenio">Convênio</label>
+          <input type="text" id="convenio" name="convenio" value="{{ s.convenio or '' }}" placeholder="Nome do convênio">
+        </div>
+        <div class="form-group">
+          <label for="carteirinha">Nº da carteirinha</label>
+          <input type="text" id="carteirinha" name="carteirinha" value="{{ s.carteirinha or '' }}">
+        </div>
+        <div class="form-group">
+          <label for="autorizacao">Nº de autorização</label>
+          <input type="text" id="autorizacao" name="autorizacao" value="{{ s.autorizacao or '' }}" placeholder="Obtido no portal do convênio">
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1rem;">
+      <button class="btn" type="submit" name="acao" value="salvar">💾 Salvar dados</button>
+      <a class="btn btn-secondary" href="{{ url_for('senha_recibo', senha_id=s.id) }}" target="_blank">🧾 Emitir recibo (particular)</a>
+      <a class="btn btn-secondary" href="{{ url_for('senha_autorizacao', senha_id=s.id) }}" target="_blank">📄 Imprimir autorização (convênio)</a>
+      <button class="btn" style="background:#0B5FA5;" type="submit" name="acao" value="encaminhar">➡️ Encaminhar ao médico</button>
+    </div>
+    <p class="muted" style="margin-top:0.6rem;">Salve os dados antes de emitir o recibo/autorização para que apareçam preenchidos.</p>
+  </form>
+</div>
+
+<script>
+  function mostrar(tipo) {
+    document.getElementById('bloco-particular').style.display = (tipo === 'particular') ? 'block' : 'none';
+    document.getElementById('bloco-convenio').style.display = (tipo === 'convenio') ? 'block' : 'none';
+  }
+  mostrar(document.querySelector('input[name=tipo_atendimento]:checked').value);
+</script>
+{% endblock %}

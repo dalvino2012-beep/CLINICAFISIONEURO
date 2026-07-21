@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Novo Usuário{% endblock %}
+{% block content %}
+<h1>Novo Usuário</h1>
+<div class="card">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="nome">Nome completo</label>
+        <input type="text" id="nome" name="nome" required>
+      </div>
+      <div class="form-group">
+        <label for="login">Login</label>
+        <input type="text" id="login" name="login" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" name="senha" required minlength="6">
+      </div>
+      <div class="form-group">
+        <label for="perfil">Perfil</label>
+        <select id="perfil" name="perfil" onchange="toggleMedico()">
+          <option value="recepcao">Recepção</option>
+          <option value="medico">Médico</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" id="grupo-medico" style="display:none;">
+      <label for="medico_id">Este usuário é qual médico?</label>
+      <select id="medico_id" name="medico_id">
+        <option value="">— selecione o médico —</option>
+        {% for m in medicos %}
+        <option value="{{ m.id }}">{{ m.nome }} — {{ m.especialidade }} (CRM {{ m.crm }})</option>
+        {% endfor %}
+      </select>
+      <p class="muted">O médico só verá os pacientes vinculados a ele e só ele emite as receitas desses pacientes.</p>
+    </div>
+    <button type="submit" class="btn">Salvar</button>
+    <a class="btn btn-secondary" href="{{ url_for('usuarios_lista') }}">Cancelar</a>
+  </form>
+</div>
+<script>
+  function toggleMedico() {
+    var p = document.getElementById('perfil').value;
+    document.getElementById('grupo-medico').style.display = (p === 'medico') ? 'block' : 'none';
+  }
+  toggleMedico();
+</script>
+{% endblock %}

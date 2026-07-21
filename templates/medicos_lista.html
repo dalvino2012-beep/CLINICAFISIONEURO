@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Médicos{% endblock %}
+{% block content %}
+<h1>Médicos</h1>
+{% if g.user.perfil == 'admin' %}
+<div class="card" style="background:#eaf3f0; border-color:#bcd; margin-bottom:1.2rem;">
+  <form method="get" action="{{ url_for('pacientes_lista') }}"
+        style="display:flex; gap:0.8rem; align-items:center; flex-wrap:wrap; margin:0;">
+    <label for="abrir_medico" style="font-weight:600; color:var(--primary-dark); margin:0;">
+      👨‍⚕️ Atender por médico:
+    </label>
+    <select id="abrir_medico" name="medico" required
+            style="min-width:280px; padding:0.55rem; border:1px solid var(--border); border-radius:6px; font-size:1rem;">
+      <option value="" disabled selected>— escolha o médico —</option>
+      {% for m in medicos %}{% if m.ativo %}
+      <option value="{{ m.id }}">{{ m.nome }}{% if m.especialidade %} — {{ m.especialidade }}{% endif %}</option>
+      {% endif %}{% endfor %}
+    </select>
+    <button class="btn" type="submit">Abrir pacientes →</button>
+  </form>
+  <p class="muted" style="margin:0.6rem 0 0;">Escolha o médico e clique em “Abrir pacientes” (ou tecle Enter) para ver os pacientes dele e atender.</p>
+</div>
+<div class="actions">
+  <a class="btn" href="{{ url_for('medicos_novo') }}">+ Novo médico</a>
+  <a class="btn btn-secondary" href="{{ url_for('medicos_gerenciar') }}">✎ Gerenciar vários de uma vez</a>
+</div>
+{% endif %}
+<div class="card">
+  {% if medicos %}
+  <table>
+    <thead>
+      <tr><th>Nome</th><th>CRM</th><th>Especialidade</th><th>Telefone</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for m in medicos %}
+      <tr>
+        <td>{{ m.nome }}</td>
+        <td>{{ m.crm }}</td>
+        <td>{{ m.especialidade }}</td>
+        <td>{{ m.telefone or '-' }}</td>
+        <td><span class="badge {{ 'badge-atendida' if m.ativo else 'badge-cancelada' }}">{{ 'Ativo' if m.ativo else 'Inativo' }}</span></td>
+        <td class="text-right">
+          {% if g.user.perfil == 'admin' %}
+          <a class="btn btn-small" href="{{ url_for('medicos_pacientes', medico_id=m.id) }}">Pacientes</a>
+          <a class="btn btn-small" href="{{ url_for('medicos_editar', medico_id=m.id) }}">Editar</a>
+          <form style="display:inline" method="post" action="{{ url_for('medicos_alternar_status', medico_id=m.id) }}">
+            <button class="btn btn-small btn-secondary" type="submit">{{ 'Desativar' if m.ativo else 'Ativar' }}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhum médico cadastrado.</p>
+  {% endif %}
+</div>
+{% endblock %}

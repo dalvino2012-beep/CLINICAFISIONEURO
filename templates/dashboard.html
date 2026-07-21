@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Painel{% endblock %}
+{% block content %}
+<h1>Painel do dia — {{ hoje }}</h1>
+<div class="grid-stats">
+  <div class="stat"><div class="num">{{ total_pacientes }}</div><div class="label">Pacientes cadastrados</div></div>
+  <div class="stat"><div class="num">{{ total_medicos }}</div><div class="label">Médicos ativos</div></div>
+  <div class="stat"><div class="num">{{ consultas_hoje }}</div><div class="label">Consultas hoje</div></div>
+</div>
+
+<div class="card">
+  <h2>Consultas de hoje</h2>
+  {% if proximas %}
+  <table>
+    <thead>
+      <tr><th>Hora</th><th>Paciente</th><th>Médico</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for c in proximas %}
+      <tr>
+        <td>{{ c.hora }}</td>
+        <td>{{ c.paciente_nome }}</td>
+        <td>{{ c.medico_nome }}</td>
+        <td><span class="badge badge-{{ c.status }}">{{ c.status }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhuma consulta agendada para hoje.</p>
+  {% endif %}
+</div>
+
+<div class="actions">
+  <a class="btn" href="{{ url_for('agenda_nova') }}">+ Nova consulta</a>
+  <a class="btn btn-secondary" href="{{ url_for('pacientes_novo') }}">+ Novo paciente</a>
+  <a class="btn btn-secondary" href="{{ url_for('balcao') }}">Balcão de atendimento</a>
+  <a class="btn btn-secondary" href="{{ url_for('totem') }}" target="_blank">Abrir Totem</a>
+  <a class="btn btn-secondary" href="{{ url_for('telao') }}" target="_blank">Abrir Telão</a>
+  {% if g.user.perfil == 'admin' %}
+  <form method="post" action="{{ url_for('backup_agora') }}" style="display:inline">
+    <button class="btn btn-secondary" type="submit">💾 Fazer backup agora</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

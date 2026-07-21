@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<div class="login-wrapper">
+  <div class="login-box">
+    <img src="{{ url_for('static', filename='img/logo_fisioneuro_azul.png') }}" alt="FISIONEURO Clínica Médica"
+         style="display:block; margin:0 auto 0.6rem; width:260px; max-width:90%;">
+    <div class="subtitle">Sistema de Gestão</div>
+
+    {% if medicos_login %}
+    <div class="medico-select">
+      <p class="muted" style="margin-bottom:0.5rem;">👨‍⚕️ Sou médico(a) — clique no seu nome:</p>
+      {% for m in medicos_login %}
+      <label class="medico-item">
+        <input type="checkbox" class="med-chk" onclick="selMedico(this, '{{ m.login }}')">
+        <span>{{ m.nome }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post">
+      <div class="form-group">
+        <label for="login">Usuário</label>
+        <input type="text" id="login" name="login" required autofocus
+               autocapitalize="none" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="form-group">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" name="senha" required>
+      </div>
+      <button type="submit" class="btn">Entrar</button>
+    </form>
+    <p class="muted" style="margin-top:1rem; text-align:center;">Administrador: admin / admin123</p>
+  </div>
+</div>
+<script>
+  function selMedico(el, login) {
+    // só um médico marcado por vez (comportamento de seleção única)
+    document.querySelectorAll('.med-chk').forEach(function (x) { if (x !== el) x.checked = false; });
+    document.querySelectorAll('.medico-item').forEach(function (x) { x.classList.remove('sel'); });
+    if (el.checked) {
+      el.closest('.medico-item').classList.add('sel');
+      document.getElementById('login').value = login;
+      document.getElementById('senha').focus();
+    } else {
+      document.getElementById('login').value = '';
+    }
+  }
+</script>
+{% endblock %}

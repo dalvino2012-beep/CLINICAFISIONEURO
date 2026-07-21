@@ -1,0 +1,24 @@
+# ==== DADOS SENSÍVEIS DE PACIENTES - NUNCA versionar (LGPD) ====
+clinica.db
+*.db
+*.sqlite
+*.sqlite3
+backups/
+uploads/
+
+# ==== Ambiente Python ====
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# ==== Segredos / configuração local ====
+.env
+*.key
+*.pem
+
+# ==== Diversos ====
+*.log
+.DS_Store
+Thumbs.db

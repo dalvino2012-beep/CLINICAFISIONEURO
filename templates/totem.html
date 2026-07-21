@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Totem - FISIONEURO</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: linear-gradient(160deg, #0B5FA5, #1571C9);
+      color: #fff; font-family: "Segoe UI", Arial, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;
+    }
+    h1 { font-size: 2.4rem; margin: 0 0 0.3rem; }
+    .sub { opacity: 0.85; margin-bottom: 2rem; font-size: 1.1rem; }
+    .card { background: #fff; color: #223; border-radius: 18px; padding: 2.5rem; width: 100%; max-width: 560px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+    label { font-weight: 600; display: block; margin-bottom: 0.6rem; font-size: 1.2rem; color: #0B5FA5; }
+    input {
+      width: 100%; padding: 1.1rem; font-size: 1.6rem; text-align: center; letter-spacing: 2px;
+      border: 2px solid #ccd; border-radius: 12px; margin-bottom: 1.6rem;
+    }
+    .hint { text-align: center; color: #6b7a77; font-size: 0.95rem; margin-top: -1rem; margin-bottom: 1.5rem; }
+    button {
+      width: 100%; border: none; border-radius: 14px; padding: 1.4rem; font-size: 1.5rem;
+      font-weight: 700; cursor: pointer; margin-bottom: 1rem; color: #fff;
+    }
+    .btn-normal { background: #1571C9; }
+    .btn-prio { background: #b7791f; }
+    button:active { transform: scale(0.99); }
+  </style>
+</head>
+<body>
+  <img src="{{ url_for('static', filename='img/logo_fisioneuro.png') }}" alt="FISIONEURO Clínica Médica"
+       style="width:340px; max-width:88%; margin-bottom:0.4rem;">
+  <div class="sub">Retire sua senha</div>
+  <div class="card">
+    <form method="post" action="{{ url_for('totem_senha') }}">
+      <label for="cpf">Digite seu CPF (opcional)</label>
+      <input type="text" id="cpf" name="cpf" inputmode="numeric" placeholder="000.000.000-00" autofocus>
+      <div class="hint">Informar o CPF agiliza seu atendimento. Se preferir, apenas toque em um botão abaixo.</div>
+      <button class="btn-normal" type="submit" name="prioridade" value="0">🎟️ SENHA NORMAL</button>
+      <button class="btn-prio" type="submit" name="prioridade" value="1">♿ PRIORITÁRIA (idoso, gestante, PcD)</button>
+    </form>
+  </div>
+</body>
+</html>

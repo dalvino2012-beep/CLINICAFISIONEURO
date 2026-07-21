@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if consulta else 'Nova' }} Consulta{% endblock %}
+{% block content %}
+<h1>{{ 'Editar' if consulta else 'Nova' }} Consulta</h1>
+<div class="card">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="paciente_id">Paciente</label>
+        <select id="paciente_id" name="paciente_id" required>
+          <option value="">Selecione</option>
+          {% for p in pacientes %}
+          <option value="{{ p.id }}" {{ 'selected' if consulta and consulta.paciente_id == p.id }}>{{ p.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="medico_id">Médico</label>
+        <select id="medico_id" name="medico_id" required>
+          <option value="">Selecione</option>
+          {% for m in medicos %}
+          <option value="{{ m.id }}" {{ 'selected' if consulta and consulta.medico_id == m.id }}>{{ m.nome }} — {{ m.especialidade }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="data">Data</label>
+        <input type="date" id="data" name="data" value="{{ consulta.data if consulta else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label for="hora">Hora</label>
+        <input type="time" id="hora" name="hora" value="{{ consulta.hora if consulta else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          {% for s in ['agendada', 'confirmada', 'atendida', 'cancelada'] %}
+          <option value="{{ s }}" {{ 'selected' if consulta and consulta.status == s }}>{{ s|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="tipo_atendimento">Tipo de atendimento</label>
+        <select id="tipo_atendimento" name="tipo_atendimento" onchange="toggleConv()">
+          <option value="particular" {{ 'selected' if consulta and consulta.tipo_atendimento == 'particular' }}>Particular</option>
+          <option value="convenio" {{ 'selected' if consulta and consulta.tipo_atendimento == 'convenio' }}>Convênio</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="convenio">Convênio (se aplicável)</label>
+        <input type="text" id="convenio" name="convenio" value="{{ consulta.convenio if consulta else '' }}" placeholder="Nome do convênio">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="observacoes">Observações</label>
+      <textarea id="observacoes" name="observacoes" rows="4">{{ consulta.observacoes if consulta else '' }}</textarea>
+    </div>
+    <button type="submit" class="btn">Salvar</button>
+    <a class="btn btn-secondary" href="{{ url_for('agenda_lista') }}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Nova Receita / Solicitação{% endblock %}
+{% block content %}
+<h1 style="margin-bottom:0.2rem;">Receita / Solicitação de Exames</h1>
+<p class="muted" style="margin:0.1rem 0 0.6rem;">Paciente: <strong>{{ paciente.nome }}</strong> — CPF {{ paciente.cpf }}</p>
+<div class="card">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="medico_id">Médico responsável</label>
+        <select id="medico_id" name="medico_id">
+          <option value="">— selecione —</option>
+          {% for m in medicos %}
+          <option value="{{ m.id }}" {{ 'selected' if medico_sel == m.id }}>{{ m.nome }} — {{ m.especialidade }} (CRM {{ m.crm }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="tipo">Tipo de documento</label>
+        <select id="tipo" name="tipo">
+          <option value="receita" {{ 'selected' if tipo_sel == 'receita' }}>Receita de medicamentos</option>
+          <option value="exame" {{ 'selected' if tipo_sel == 'exame' }}>Solicitação de exames</option>
+          <option value="ambos" {{ 'selected' if tipo_sel == 'ambos' }}>Receita + Exames</option>
+          <option value="controlada" {{ 'selected' if tipo_sel == 'controlada' }}>Receita controlada (2 vias)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="data">Data</label>
+        <input type="date" id="data" name="data" value="{{ hoje }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="medicamentos">Medicamentos (um por linha: nome, dosagem, quantidade)</label>
+      <textarea id="medicamentos" name="medicamentos" rows="5" placeholder="Ex.: Amoxicilina 500mg — 1 comprimido de 8/8h por 7 dias&#10;Dipirona 1g — em caso de dor, até 4x ao dia"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="exames">Exames solicitados (um por linha)</label>
+      <textarea id="exames" name="exames" rows="4" placeholder="Ex.: Hemograma completo&#10;Glicemia de jejum&#10;Raio-X de tórax"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="instrucoes">Orientações ao paciente (sai impresso na receita)</label>
+      <textarea id="instrucoes" name="instrucoes" rows="3" placeholder="Ex.: Comparecer em jejum de 8 horas."></textarea>
+    </div>
+    <div class="form-group" style="border-top:2px solid var(--border); margin-top:1.6rem; padding-top:1.4rem;">
+      <label for="evolucao">Evolução / observações do médico (fica no prontuário, não sai na receita)</label>
+      <textarea id="evolucao" name="evolucao" rows="10" placeholder="Espaço para o médico escrever suas observações: queixa, exame clínico, diagnóstico, conduta, evolução do paciente..."></textarea>
+    </div>
+    <button type="submit" class="btn">Gerar documento</button>
+    <a class="btn btn-secondary" href="{{ url_for('pacientes_editar', paciente_id=paciente.id) }}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

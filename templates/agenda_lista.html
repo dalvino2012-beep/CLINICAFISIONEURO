@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Agenda{% endblock %}
+{% block content %}
+<h1>Agenda de Consultas</h1>
+<div class="actions">
+  <form class="search-box" method="get" style="display:flex; gap:0.6rem; align-items:center;">
+    <input type="date" name="data" value="{{ data_filtro }}">
+    <select name="status">
+      <option value="">Todos os status</option>
+      <option value="agendada" {{ 'selected' if status_filtro == 'agendada' }}>Agendada</option>
+      <option value="confirmada" {{ 'selected' if status_filtro == 'confirmada' }}>Confirmada</option>
+      <option value="atendida" {{ 'selected' if status_filtro == 'atendida' }}>Atendida</option>
+      <option value="cancelada" {{ 'selected' if status_filtro == 'cancelada' }}>Cancelada</option>
+    </select>
+    <button class="btn btn-small" type="submit">Filtrar</button>
+  </form>
+  <a class="btn" href="{{ url_for('agenda_nova') }}">+ Nova consulta</a>
+</div>
+<div class="card">
+  {% if consultas %}
+  <table>
+    <thead>
+      <tr><th>Hora</th><th>Paciente</th><th>Médico</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for c in consultas %}
+      <tr>
+        <td>{{ c.hora }}</td>
+        <td>{{ c.paciente_nome }}</td>
+        <td>{{ c.medico_nome }}</td>
+        <td><span class="badge badge-{{ c.status }}">{{ c.status }}</span></td>
+        <td class="text-right"><a class="btn btn-small" href="{{ url_for('agenda_editar', consulta_id=c.id) }}">Editar</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhuma consulta encontrada para esse filtro.</p>
+  {% endif %}
+</div>
+{% endblock %}

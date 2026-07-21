@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>{% block title %}FISIONEURO{% endblock %} - Clínica</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20260717b">
+</head>
+<body>
+  {% if g.user %}
+  <div class="topbar">
+    <div class="brand-row">
+      <img class="brand-logo" src="{{ url_for('static', filename='img/logo_fisioneuro_azul.png') }}" alt="FISIONEURO Clínica Médica">
+      <a class="brand-sair" href="{{ url_for('logout') }}">Sair</a>
+    </div>
+    {% set p = request.path %}
+    <nav class="nav-row">
+      <a class="{{ 'active' if p == '/' }}" href="{{ url_for('dashboard') }}">Painel</a>
+      <a class="{{ 'active' if p.startswith('/pacientes') }}" href="{{ url_for('pacientes_lista') }}">Pacientes</a>
+      <a class="{{ 'active' if p.startswith('/medicos') }}" href="{{ url_for('medicos_lista') }}">Médicos</a>
+      <a class="{{ 'active' if p.startswith('/agenda') }}" href="{{ url_for('agenda_lista') }}">Agenda</a>
+      <a class="{{ 'active' if p.startswith('/balcao') or p.startswith('/atendimento') }}" href="{{ url_for('balcao') }}">Balcão</a>
+      <a href="{{ url_for('telao') }}" target="_blank">Telão</a>
+      {% if g.user.perfil == 'admin' %}
+      <a class="{{ 'active' if p.startswith('/usuarios') }}" href="{{ url_for('usuarios_lista') }}">Usuários</a>
+      {% endif %}
+      <a class="{{ 'active' if p.startswith('/alterar-senha') }}" href="{{ url_for('alterar_senha') }}">Olá, {{ g.user.nome }}</a>
+    </nav>
+  </div>
+  {% endif %}
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+  <footer class="rodape">
+    <div><strong>Central de Atendimento:</strong> (11) 4412-2723 / 4412-2805</div>
+    <div>Alameda Lindóia, 99 - Jardim do Lago - CEP: 12947-280 - Atibaia - SP</div>
+  </footer>
+</body>
+</html>

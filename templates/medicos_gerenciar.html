@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Gerenciar Médicos{% endblock %}
+{% block content %}
+<h1>Gerenciar Médicos (em lote)</h1>
+<p class="muted">Edite os médicos existentes e preencha as linhas em branco para cadastrar novos. As linhas vazias são ignoradas. Ao final, clique em <strong>Salvar tudo</strong>.</p>
+
+<div class="card">
+  <form method="post">
+    <div style="overflow-x:auto;">
+      <table id="tabela-medicos">
+        <thead>
+          <tr>
+            <th style="min-width:200px;">Nome *</th>
+            <th style="min-width:110px;">CRM *</th>
+            <th style="min-width:160px;">Especialidade</th>
+            <th style="min-width:130px;">Telefone</th>
+            <th style="min-width:80px;">Sala</th>
+            <th style="min-width:110px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in medicos %}
+          <tr>
+            <td><input type="hidden" name="id" value="{{ m.id }}"><input type="text" name="nome" value="{{ m.nome }}"></td>
+            <td><input type="text" name="crm" value="{{ m.crm }}"></td>
+            <td><input type="text" name="especialidade" value="{{ m.especialidade }}"></td>
+            <td><input type="text" name="telefone" value="{{ m.telefone or '' }}"></td>
+            <td><input type="text" name="sala" value="{{ m.sala or '' }}"></td>
+            <td>
+              <select name="ativo">
+                <option value="1" {{ 'selected' if m.ativo }}>Ativo</option>
+                <option value="0" {{ 'selected' if not m.ativo }}>Inativo</option>
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+          {% for _ in range(5) %}
+          <tr class="linha-nova">
+            <td><input type="hidden" name="id" value=""><input type="text" name="nome" placeholder="Novo médico"></td>
+            <td><input type="text" name="crm"></td>
+            <td><input type="text" name="especialidade"></td>
+            <td><input type="text" name="telefone"></td>
+            <td><input type="text" name="sala"></td>
+            <td>
+              <select name="ativo">
+                <option value="1" selected>Ativo</option>
+                <option value="0">Inativo</option>
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem;">
+      <button type="button" class="btn btn-secondary" onclick="addLinha()">+ Adicionar linha</button>
+      <button type="submit" class="btn">💾 Salvar tudo</button>
+      <a class="btn btn-secondary" href="{{ url_for('medicos_lista') }}">Voltar</a>
+    </div>
+  </form>
+</div>
+
+<template id="modelo-linha">
+  <tr class="linha-nova">
+    <td><input type="hidden" name="id" value=""><input type="text" name="nome" placeholder="Novo médico"></td>
+    <td><input type="text" name="crm"></td>
+    <td><input type="text" name="especialidade"></td>
+    <td><input type="text" name="telefone"></td>
+    <td><input type="text" name="sala"></td>
+    <td>
+      <select name="ativo">
+        <option value="1" selected>Ativo</option>
+        <option value="0">Inativo</option>
+      </select>
+    </td>
+  </tr>
+</template>
+
+<script>
+  function addLinha() {
+    const tpl = document.getElementById('modelo-linha');
+    const tbody = document.querySelector('#tabela-medicos tbody');
+    tbody.appendChild(tpl.content.cloneNode(true));
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel de Chamadas - FISIONEURO</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #0A2A45; color: #fff; font-family: "Segoe UI", Arial, sans-serif; overflow: hidden; }
+    .topo { background: #0B5FA5; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .topo h1 { margin: 0; font-size: 1.8rem; }
+    .topo .hora { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+    .atual {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 3rem 1rem; text-align: center;
+    }
+    .atual .rot { font-size: 1.8rem; opacity: 0.8; letter-spacing: 2px; }
+    .atual .senha { font-size: 9rem; font-weight: 800; margin: 0.3rem 0; line-height: 1; }
+    .atual .nome { font-size: 2.4rem; margin-bottom: 0.6rem; }
+    .atual .destino { font-size: 3.2rem; font-weight: 700; color: #7CC6FF; }
+    .vazio { font-size: 2rem; opacity: 0.6; padding: 5rem; text-align: center; }
+    .recentes { display: flex; gap: 1rem; padding: 1.5rem 2rem; flex-wrap: wrap; justify-content: center; }
+    .chip { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 1rem 1.4rem; text-align: center; min-width: 160px; }
+    .chip .s { font-size: 2rem; font-weight: 700; }
+    .chip .d { font-size: 1.1rem; opacity: 0.85; }
+    .flash { animation: pisca 1s ease-in-out 3; }
+    @keyframes pisca { 0%,100% { background: #0A2A45; } 50% { background: #123F66; } }
+  </style>
+</head>
+<body>
+  <div class="topo">
+    <h1 style="display:flex; align-items:center; gap:0.9rem; margin:0;">
+      <img src="{{ url_for('static', filename='img/logo_fisioneuro.png') }}" alt="FISIONEURO" style="height:58px;">
+      <span>Painel de Chamadas</span>
+    </h1>
+    <div class="hora" id="hora">--:--</div>
+  </div>
+  <div id="area-atual"></div>
+  <div class="recentes" id="area-recentes"></div>
+
+  <script>
+    let ultimaSenha = null;
+
+    function tick() {
+      const agora = new Date();
+      document.getElementById('hora').textContent =
+        String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+    }
+    setInterval(tick, 1000); tick();
+
+    async function atualizar() {
+      try {
+        const resp = await fetch("{{ url_for('telao_dados') }}", { cache: 'no-store' });
+        const d = await resp.json();
+        const area = document.getElementById('area-atual');
+        if (d.atual) {
+          const chave = d.atual.senha + '|' + d.atual.destino;
+          area.innerHTML =
+            '<div class="atual">' +
+              '<div class="rot">SENHA</div>' +
+              '<div class="senha">' + d.atual.senha + '</div>' +
+              (d.atual.nome ? '<div class="nome">' + d.atual.nome + '</div>' : '') +
+              '<div class="destino">➜ ' + d.atual.destino + '</div>' +
+            '</div>';
+          if (chave !== ultimaSenha) {
+            document.body.classList.remove('flash'); void document.body.offsetWidth;
+            document.body.classList.add('flash');
+            ultimaSenha = chave;
+          }
+        } else {
+          area.innerHTML = '<div class="vazio">Aguardando chamadas…</div>';
+        }
+        const rec = document.getElementById('area-recentes');
+        rec.innerHTML = (d.recentes || []).map(function (r) {
+          return '<div class="chip"><div class="s">' + r.senha + '</div><div class="d">' + r.destino + '</div></div>';
+        }).join('');
+      } catch (e) { /* silencioso */ }
+    }
+    setInterval(atualizar, 3000); atualizar();
+  </script>
+</body>
+</html>

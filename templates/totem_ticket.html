@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Senha - FISIONEURO</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: #0B5FA5; color: #fff;
+      font-family: "Segoe UI", Arial, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;
+    }
+    .rotulo { font-size: 1.4rem; opacity: 0.85; }
+    .numero { font-size: 8rem; font-weight: 800; margin: 0.5rem 0; letter-spacing: 4px; }
+    .tipo { font-size: 1.4rem; background: rgba(255,255,255,0.15); padding: 0.5rem 1.5rem; border-radius: 999px; }
+    .aviso { margin-top: 2rem; font-size: 1.2rem; opacity: 0.9; text-align: center; }
+    .print-info { display: none; }
+    a.voltar {
+      margin-top: 2.5rem; color: #fff; background: #1571C9; text-decoration: none;
+      padding: 1rem 2rem; border-radius: 12px; font-size: 1.2rem;
+    }
+    @media print { a.voltar { display: none; } body { background: #fff; color: #000; } }
+  </style>
+</head>
+<body>
+  <div class="rotulo">Sua senha é</div>
+  <div class="numero">{{ s | senha }}</div>
+  <div class="tipo">{{ 'ATENDIMENTO PRIORITÁRIO' if s.prioridade else 'ATENDIMENTO NORMAL' }}</div>
+  <div class="aviso">Aguarde ser chamado no painel para dirigir-se ao balcão.</div>
+  <a class="voltar" href="{{ url_for('totem') }}">Nova senha</a>
+  <script>
+    // volta ao totem automaticamente apos 20s (uso em quiosque)
+    setTimeout(function () { window.location.href = "{{ url_for('totem') }}"; }, 20000);
+  </script>
+</body>
+</html>

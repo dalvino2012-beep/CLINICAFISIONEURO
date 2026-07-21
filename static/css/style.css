@@ -1,0 +1,238 @@
+:root {
+  --primary: #1571C9;
+  --primary-dark: #0B5FA5;
+  --bg: #f4f7f6;
+  --card: #ffffff;
+  --text: #223;
+  --muted: #6b7a77;
+  --border: #dde5e2;
+  --danger: #c0392b;
+  --success: #2f7a63;
+  --warn: #b7791f;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.topbar {
+  background: #3B8ED0;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Linha superior: nome da clínica (centralizado, altura reduzida) */
+.topbar .brand-row {
+  height: 1.9cm;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5rem;
+  background: #ffffff;
+}
+.topbar .brand-logo { height: 58px; width: auto; display: block; }
+.topbar .brand-sair {
+  position: absolute; right: 1.5rem; top: 50%; transform: translateY(-50%);
+  color: #0B5FA5; text-decoration: none; font-size: 0.9rem;
+  border: 1px solid #0B5FA5; padding: 0.3rem 0.85rem; border-radius: 6px;
+}
+.topbar .brand-sair:hover { background: rgba(11,95,165,0.10); }
+
+/* Linha das opções do menu (altura 1,5 cm) */
+.topbar .nav-row {
+  height: 1.5cm;
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 0 1.5rem;
+  background: rgba(0,0,0,0.12);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.topbar .nav-row a {
+  color: #eaf3f0;
+  text-decoration: none;
+  font-size: 1rem;
+  white-space: nowrap;
+  padding: 0.28rem 0.9rem;
+  border-radius: 999px;
+}
+.topbar .nav-row a:hover { text-decoration: underline; }
+/* opção que está sendo visualizada: realce arredondado bem leve (nome continua legível) */
+.topbar .nav-row a.active {
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-weight: 600;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.grid-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.2rem;
+  text-align: center;
+}
+
+.stat .num { font-size: 2rem; font-weight: 700; color: var(--primary); }
+.stat .label { color: var(--muted); font-size: 0.9rem; }
+
+h1, h2, h3 { color: var(--primary-dark); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+}
+
+th, td {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+th { color: var(--muted); font-weight: 600; }
+
+.btn {
+  display: inline-block;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 1.1rem;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.btn:hover { background: var(--primary-dark); }
+.btn-secondary { background: var(--muted); }
+.btn-small { padding: 0.3rem 0.7rem; font-size: 0.85rem; }
+
+.actions { display: flex; gap: 1.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+
+.form-group { margin-bottom: 1rem; }
+/* formulário compacto (menos espaço entre os campos - ex.: ficha do paciente) */
+.compacto .form-group { margin-bottom: 0.45rem; }
+.compacto .form-row { margin-bottom: 0; }
+.compacto .form-group label { margin-bottom: 0.12rem; }
+.compacto .form-group input, .compacto .form-group select { padding: 0.4rem 0.55rem; }
+.form-group label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.9rem; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  padding: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.form-row { display: flex; gap: 1rem; }
+.form-row .form-group { flex: 1; }
+
+.badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: #fff;
+}
+.badge-agendada { background: #7f8c8d; }
+.badge-confirmada { background: #2980b9; }
+.badge-atendida { background: var(--success); }
+.badge-cancelada { background: var(--danger); }
+
+.flash {
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+.flash-success { background: #e3f3ec; color: var(--success); border: 1px solid #b9dece; }
+.flash-error { background: #fbeceb; color: var(--danger); border: 1px solid #f0c6c2; }
+
+.login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-box {
+  background: var(--card);
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-box h1 { text-align: center; margin-bottom: 0.3rem; }
+.login-box .subtitle { text-align: center; color: var(--muted); margin-bottom: 1.5rem; font-size: 0.9rem; }
+.login-box .btn { width: 100%; margin-top: 0.5rem; }
+
+/* seleção rápida de médico na tela de login */
+.medico-select { margin-bottom: 1.2rem; text-align: left; }
+.medico-item {
+  display: flex; align-items: center; gap: 0.55rem; width: 100%; text-align: left;
+  background: #f4f7f6; border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.55rem 0.8rem; margin-bottom: 0.4rem; cursor: pointer;
+  font-size: 0.95rem; color: var(--text); font-family: inherit;
+}
+.medico-item:hover { border-color: var(--primary); }
+.medico-item .med-chk {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  width: 24px; height: 24px; flex: 0 0 auto; cursor: pointer; margin: 0;
+  border: 2px solid var(--primary); border-radius: 5px; background: #fff;
+  position: relative;
+}
+.medico-item .med-chk:checked { background: var(--primary); }
+.medico-item .med-chk:checked::after {
+  content: "✓"; color: #fff; font-size: 16px; font-weight: 700;
+  position: absolute; top: -2px; left: 4px;
+}
+.medico-item.sel { border-color: var(--primary); background: #eaf3f0; font-weight: 600; }
+
+.search-box input {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 260px;
+}
+
+.rodape {
+  text-align: center;
+  color: #0B5FA5;
+  padding: 1.4rem 1rem 2rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.rodape strong { color: #0B5FA5; }
+
+.muted { color: var(--muted); font-size: 0.85rem; }
+.text-right { text-align: right; }

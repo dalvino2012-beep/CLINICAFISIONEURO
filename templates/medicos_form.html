@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if medico else 'Novo' }} Médico{% endblock %}
+{% block content %}
+<h1>{{ 'Editar' if medico else 'Novo' }} Médico</h1>
+<div class="card">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="nome">Nome completo</label>
+        <input type="text" id="nome" name="nome" value="{{ medico.nome if medico else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label for="crm">CRM</label>
+        <input type="text" id="crm" name="crm" value="{{ medico.crm if medico else '' }}" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="especialidade">Especialidade</label>
+        <input type="text" id="especialidade" name="especialidade" value="{{ medico.especialidade if medico else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label for="telefone">Telefone</label>
+        <input type="text" id="telefone" name="telefone" value="{{ medico.telefone if medico else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="sala">Sala / consultório</label>
+        <input type="text" id="sala" name="sala" value="{{ medico.sala if medico else '' }}" placeholder="Ex.: 2">
+      </div>
+    </div>
+    <button type="submit" class="btn">Salvar</button>
+    <a class="btn btn-secondary" href="{{ url_for('medicos_lista') }}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

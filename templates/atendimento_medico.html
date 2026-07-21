@@ -1,0 +1,119 @@
+﻿{% extends "base.html" %}
+{% block title %}Atendimento médico{% endblock %}
+{% block content %}
+<h1>Atendimento Médico — Senha {{ s | senha }}</h1>
+
+<div class="card" style="background:#eaf3f0;">
+  <div><strong>Paciente:</strong>
+    <a href="{{ url_for('pacientes_editar', paciente_id=s.paciente_id) }}">{{ s.paciente_nome }}</a>
+    {% if s.paciente_cpf %} — CPF {{ s.paciente_cpf }}{% endif %}
+  </div>
+  <div><strong>Médico:</strong> {{ s.medico_nome or '— (defina no balcão)' }}{% if s.medico_especialidade %} — {{ s.medico_especialidade }}{% endif %}{% if s.sala %} · Sala {{ s.sala }}{% endif %}</div>
+  <div><strong>Atendimento:</strong>
+    {{ {'particular':'Particular','convenio':'Convênio'}.get(s.tipo_atendimento, '-') }}
+    {% if s.tipo_atendimento == 'convenio' %}
+      — <strong>Convênio:</strong> {{ s.convenio or '(não informado)' }}
+      {% if s.carteirinha %} · Carteirinha {{ s.carteirinha }}{% endif %}
+      {% if s.autorizacao %} · Autorização {{ s.autorizacao }}{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Observações do atendimento</h2>
+  <form method="post">
+    <div class="form-group">
+      <textarea name="texto" rows="5" placeholder="Evolução, diagnóstico, conduta, orientações..." required></textarea>
+    </div>
+    <button class="btn" type="submit">Salvar observação</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Emitir receita</h2>
+  {% if pode_receita() %}
+  <p class="muted">A receita abre pronta para impressão. Controlada sai automaticamente em 2 vias.</p>
+  <a class="btn" href="{{ url_for('receitas_nova', paciente_id=s.paciente_id, tipo='receita', medico_id=s.medico_id or '') }}">💊 Receita simples (1 via)</a>
+  <a class="btn" style="background:#b7791f;" href="{{ url_for('receitas_nova', paciente_id=s.paciente_id, tipo='controlada', medico_id=s.medico_id or '') }}">📑 Receita controlada (2 vias)</a>
+  <a class="btn btn-secondary" href="{{ url_for('receitas_nova', paciente_id=s.paciente_id, tipo='exame', medico_id=s.medico_id or '') }}">🧪 Solicitação de exames</a>
+  {% else %}
+  <p class="muted">As receitas são emitidas pelo médico do paciente (entre com o login do médico).</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Receitas deste paciente</h2>
+  {% if receitas %}
+  <table>
+    <thead><tr><th>Data</th><th>Tipo</th><th>Médico</th><th></th></tr></thead>
+    <tbody>
+      {% for r in receitas %}
+      <tr>
+        <td>{{ r.data }}</td>
+        <td>{{ {'receita':'Receita','exame':'Exames','ambos':'Receita + Exames','controlada':'Controlada (2 vias)'}.get(r.tipo, r.tipo) }}</td>
+        <td>{{ r.medico_nome or '-' }}</td>
+        <td class="text-right"><a class="btn btn-small" href="{{ url_for('receita_ver', receita_id=r.id) }}">Abrir / Imprimir</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Nenhuma receita ainda.</p>{% endif %}
+</div>
+
+{% if pode_receita() and (receitas or evolucoes) %}
+<div class="card">
+  <h2>Imprimir documentos (selecione)</h2>
+  <form method="post" action="{{ url_for('imprimir_documentos', paciente_id=s.paciente_id) }}" target="_blank">
+    <div style="display:flex; gap:0.6rem; margin-bottom:0.8rem;">
+      <button type="button" class="btn btn-small btn-secondary" onclick="marcarTodos(true)">Marcar todos</button>
+      <button type="button" class="btn btn-small btn-secondary" onclick="marcarTodos(false)">Limpar</button>
+    </div>
+    {% if receitas %}
+    <h3 style="margin:0.4rem 0;">Receitas / remédios e exames</h3>
+    {% for rec in receitas %}
+    <label style="display:block; font-weight:400; padding:0.25rem 0;">
+      <input type="checkbox" class="doc-chk" name="receita_ids" value="{{ rec.id }}">
+      {{ rec.data }} — {{ {'receita':'Receita','exame':'Exames','ambos':'Receita + Exames','controlada':'Controlada (2 vias)'}.get(rec.tipo, rec.tipo) }}{% if rec.medico_nome %} · {{ rec.medico_nome }}{% endif %}
+    </label>
+    {% endfor %}
+    {% endif %}
+    {% if evolucoes %}
+    <h3 style="margin:0.8rem 0 0.4rem;">Consultas / evoluções</h3>
+    {% for e in evolucoes %}
+    <label style="display:block; font-weight:400; padding:0.25rem 0;">
+      <input type="checkbox" class="doc-chk" name="evolucao_ids" value="{{ e.id }}">
+      {{ e.criado_em }} — {{ e.medico_nome or 'Médico' }}
+    </label>
+    {% endfor %}
+    {% endif %}
+    <div style="margin-top:1rem;">
+      <button type="submit" class="btn">🖨️ Imprimir selecionados</button>
+    </div>
+    <p class="muted">Abre um único PDF com todos os documentos marcados, pronto para imprimir.</p>
+  </form>
+</div>
+<script>
+  function marcarTodos(v) { document.querySelectorAll('.doc-chk').forEach(function (c) { c.checked = v; }); }
+</script>
+{% endif %}
+
+<div class="card">
+  <h2>Histórico de observações (evolução)</h2>
+  {% if evolucoes %}
+  {% for e in evolucoes %}
+  <div style="border-bottom:1px solid #dde5e2; padding:0.6rem 0;">
+    <div class="muted">{{ e.criado_em }} — {{ e.medico_nome or 'Médico' }}{% if e.convenio %} · {{ e.convenio }}{% endif %}</div>
+    <div style="white-space:pre-wrap;">{{ e.texto }}</div>
+  </div>
+  {% endfor %}
+  {% else %}<p class="muted">Nenhuma observação registrada ainda.</p>{% endif %}
+</div>
+
+<div class="card">
+  <form method="post" action="{{ url_for('balcao_finalizar', senha_id=s.id) }}" onsubmit="return confirm('Finalizar o atendimento desta senha?');">
+    <button class="btn" style="background:#0B5FA5;" type="submit">✔️ Finalizar atendimento</button>
+    <a class="btn btn-secondary" href="{{ url_for('balcao') }}">Voltar ao balcão</a>
+  </form>
+</div>
+{% endblock %}
+

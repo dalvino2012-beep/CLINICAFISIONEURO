@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Documento - {{ r.paciente_nome }}</title>
+  <style>
+    :root { --primary: #0B5FA5; --border: #dde5e2; --muted: #6b7a77; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #eef2f1; font-family: "Segoe UI", Arial, sans-serif; color: #223; }
+    .toolbar {
+      background: #0B5FA5; padding: 0.8rem 1.2rem; display: flex; gap: 0.6rem;
+      flex-wrap: wrap; align-items: center; position: sticky; top: 0;
+    }
+    .toolbar a, .toolbar button {
+      border: none; border-radius: 6px; padding: 0.5rem 1rem; font-size: 0.9rem;
+      cursor: pointer; text-decoration: none; color: #fff; background: #1571C9;
+    }
+    .toolbar .btn-print {
+      background: #1565C0; font-size: 1.25rem; font-weight: 700;
+      padding: 0.8rem 1.8rem; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+    .toolbar .btn-pdf { background: #7f5bb5; font-size: 1.05rem; font-weight: 600; padding: 0.8rem 1.4rem; }
+    .toolbar .btn-zap { background: #25d366; color: #073b1e; font-weight: 600; }
+    .toolbar .btn-mail { background: #d98a1f; }
+    .toolbar .btn-back { background: #5a6b67; margin-left: auto; }
+    .folha {
+      background: #fff; width: 16cm; max-width: 100%; margin: 1.5rem auto; padding: 14mm 12mm 12mm 24mm;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08); min-height: 20cm; position: relative;
+    }
+    .folha::before {
+      content: ""; position: absolute; top: 0; bottom: 0;
+      left: 0; width: 8mm; background: #0B5FA5;
+    }
+    .via-label {
+      position: absolute; top: 1rem; right: 1.4rem; background: #0B5FA5; color: #fff;
+      padding: 0.25rem 0.8rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+    }
+    .cab { text-align: center; border-bottom: 2px solid var(--primary); padding-bottom: 0.8rem; }
+    .cab h1 { color: var(--primary); margin: 0 0 0.2rem; font-size: 1.5rem; }
+    .cab .info { color: var(--muted); font-size: 0.85rem; }
+    .doc-titulo { text-align: center; letter-spacing: 1px; margin: 1.4rem 0 0.4rem; color: var(--primary); }
+    .tarja-controlada {
+      text-align: center; border: 1px solid #c0392b; color: #c0392b; border-radius: 6px;
+      padding: 0.3rem; margin: 0 0 1rem; font-size: 0.8rem; letter-spacing: 1px; font-weight: 600;
+    }
+    .ctrl-titulo { text-align: center; color: #0B5FA5; font-weight: 700; font-size: 1.2rem; letter-spacing: 1px; margin: 0.1rem 0 0.15rem; }
+    .emit-caixa { border: 1.2px solid #222; padding: 4px 8px 6px; }
+    .emit-label { text-align: center; font-size: 0.72rem; letter-spacing: 1px; color: #333; }
+    .emit-linha { border-top: 0.8px solid #222; margin: 3px 0 5px; }
+    .emit-cols { display: flex; align-items: center; gap: 12px; }
+    .emit-logo img { height: 42px; display: block; }
+    .emit-contato { font-size: 0.72rem; color: #333; line-height: 1.35; }
+    .ctrl-pac { margin: 0.7rem 0 0.4rem; font-size: 1rem; line-height: 2.1; }
+    .ctrl-presc { min-height: 4.5cm; font-size: 1.05rem; }
+    .ctrl-presc pre { font-family: inherit; white-space: pre-wrap; margin: 0.3rem 0; line-height: 1.6; }
+    .ctrl-assin { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 0.6rem; }
+    .ctrl-data { font-size: 0.85rem; }
+    .ctrl-medico { text-align: center; font-size: 0.8rem; color: #333; }
+    .ctrl-linha-assin { border-top: 1px solid #222; width: 8cm; margin: 0.2rem auto 0.15rem; }
+    .ctrl-boxes { display: flex; gap: 8px; margin-top: 0.8rem; }
+    .ctrl-box { flex: 1; border: 1px solid #222; }
+    .ctrl-box-tit { text-align: center; color: #0B5FA5; font-weight: 700; font-size: 0.75rem; border-bottom: 0.8px solid #222; padding: 3px; }
+    .ctrl-box-corpo { padding: 5px 7px; font-size: 0.76rem; line-height: 1.7; color: #333; }
+    .ctrl-rodape { text-align: center; font-size: 0.68rem; color: #333; margin-top: 5px; }
+    .paciente-box { border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 1.2rem; font-size: 0.95rem; }
+    .paciente-box div { margin: 0.15rem 0; }
+    .secao h3 { color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+    .secao pre {
+      font-family: inherit; font-size: 1.05rem; line-height: 1.7; white-space: pre-wrap;
+      margin: 0.4rem 0 1.4rem;
+    }
+    .assinatura { margin-top: 4rem; text-align: center; }
+    .assinatura .linha { border-top: 1px solid #333; width: 60%; margin: 0 auto 0.4rem; }
+    .assinatura .nome { font-weight: 600; }
+    .assinatura .crm { color: var(--muted); font-size: 0.85rem; }
+    .rodape-clinica { position: absolute; left: 8mm; right: 4mm; bottom: 8mm; text-align: center; font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+    .qr-simples { position: absolute; right: 8mm; bottom: 40mm; width: 30mm; text-align: center; }
+    .qr-simples img { width: 30mm; display: block; image-rendering: pixelated; }
+    .qr-simples span, .qr-ctrl span { font-size: 0.6rem; color: #555; display: block; }
+    .qr-ctrl { float: right; width: 28mm; text-align: center; margin: 0 0 6px 10px; }
+    .qr-ctrl img { width: 28mm; display: block; image-rendering: pixelated; }
+    .quebra { page-break-after: always; }
+    /* garante que as cores (faixa/cabeçalho azul) saiam na impressão */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @media print {
+      @page { size: 16cm 20cm; margin: 0; }
+      .toolbar { display: none; }
+      body { background: #fff; }
+      .folha { box-shadow: none; margin: 0 auto; width: 16cm; max-width: none; padding: 14mm 12mm 12mm 24mm; min-height: auto; }
+      .folha::before { top: 0; bottom: 0; left: 0; width: 8mm; }
+    }
+  </style>
+</head>
+<body>
+  {% if r.tipo == 'exame' %}{% set titulo = 'SOLICITAÇÃO DE EXAMES' %}
+  {% elif r.tipo == 'ambos' %}{% set titulo = 'RECEITA E SOLICITAÇÃO DE EXAMES' %}
+  {% elif r.tipo == 'controlada' %}{% set titulo = 'RECEITA DE CONTROLE ESPECIAL' %}
+  {% else %}{% set titulo = 'RECEITUÁRIO MÉDICO' %}{% endif %}
+  {% set duas_vias = (r.tipo == 'controlada') %}
+
+  {%- set msg -%}
+*{{ clinica_nome }}*
+{{ titulo }}
+
+Paciente: {{ r.paciente_nome }}
+Data: {{ r.data }}
+{% if r.medicamentos %}
+Medicamentos:
+{{ r.medicamentos }}
+{% endif %}{% if r.exames %}
+Exames solicitados:
+{{ r.exames }}
+{% endif %}{% if r.instrucoes %}
+Orientações:
+{{ r.instrucoes }}
+{% endif %}{% if r.medico_nome %}
+Médico: {{ r.medico_nome }} (CRM {{ r.medico_crm }})
+{% endif %}
+  {%- endset -%}
+
+  {% macro via(rotulo) %}
+  <div class="folha {{ 'quebra' if rotulo == '1ª VIA – FARMÁCIA' }}">
+    {% if rotulo %}<div class="via-label">{{ rotulo }}</div>{% endif %}
+    {% if duas_vias %}
+    {# ---- Receituário de Controle Especial ---- #}
+    <div class="emit-caixa">
+      <div class="ctrl-titulo">RECEITUÁRIO CONTROLE ESPECIAL</div>
+      <div class="emit-label">IDENTIFICAÇÃO DO EMITENTE</div>
+      <div class="emit-linha"></div>
+      <div class="emit-cols">
+        <div class="emit-logo"><img src="{{ url_for('static', filename='img/logo_fisioneuro_azul.png') }}" alt="{{ clinica_nome }}"></div>
+        <div class="emit-contato">
+          <strong>Central de Atendimento:</strong><br>
+          (11) 4412-2723 / 4412-2805<br>
+          Alameda Lindóia, 99 - Jardim do Lago<br>
+          CEP 12947-280 - Atibaia - SP<br>
+          CNPJ 19.428.551/0001-01<br>www.fisioneuro.com
+        </div>
+      </div>
+    </div>
+    <div class="ctrl-pac">
+      <div><strong>Paciente:</strong> {{ r.paciente_nome }}</div>
+      <div><strong>Endereço:</strong> {{ r.paciente_endereco or '' }}</div>
+      <div><strong>Prescrição — CPF:</strong> {{ r.paciente_cpf }}</div>
+    </div>
+    <div class="ctrl-presc">
+      <div class="qr-ctrl"><img src="{{ qr }}" alt="QR Code"><span>Escaneie para conferir</span></div>
+      {% if r.medicamentos %}<pre>{{ r.medicamentos }}</pre>{% endif %}
+      {% if r.instrucoes %}<pre>{{ r.instrucoes }}</pre>{% endif %}
+    </div>
+    <div class="ctrl-assin">
+      <div class="ctrl-data">DATA: {{ r.data }}</div>
+      <div class="ctrl-medico">
+        {% if r.medico_nome %}{{ r.medico_nome }} — CRM {{ r.medico_crm }}{% if r.medico_especialidade %} — {{ r.medico_especialidade }}{% endif %}{% endif %}
+        <div class="ctrl-linha-assin"></div>
+        CARIMBO E ASSINATURA DO MÉDICO
+      </div>
+    </div>
+    <div class="ctrl-boxes">
+      <div class="ctrl-box">
+        <div class="ctrl-box-tit">IDENTIFICAÇÃO DO COMPRADOR</div>
+        <div class="ctrl-box-corpo">
+          Nome: ____________________________<br>
+          Ident.(RG): ____________ Órg.Emissor: ______<br>
+          End.: ____________________________<br>
+          Cidade/UF: _______________________
+        </div>
+      </div>
+      <div class="ctrl-box">
+        <div class="ctrl-box-tit">IDENTIFICAÇÃO DO FORNECEDOR</div>
+        <div class="ctrl-box-corpo">
+          Carimbo do Estabelecimento<br><br><br>
+          Assinatura do Farmacêutico<br>
+          Data: ____/____/______
+        </div>
+      </div>
+    </div>
+    <div class="ctrl-rodape">1ª via - Retenção da Farmácia&nbsp;&nbsp;/&nbsp;&nbsp;2ª via - Orientação ao Paciente</div>
+    {% else %}
+    <div class="cab">
+      <img src="{{ url_for('static', filename='img/logo_fisioneuro_azul.png') }}" alt="{{ clinica_nome }}"
+           style="height:66px; display:block; margin:0 auto 0.2rem;">
+    </div>
+    <h2 class="doc-titulo">{{ titulo }}</h2>
+
+    <div class="paciente-box">
+      <div><strong>Paciente:</strong> {{ r.paciente_nome }}</div>
+      <div><strong>CPF:</strong> {{ r.paciente_cpf }}{% if r.paciente_nasc %} &nbsp;|&nbsp; <strong>Nascimento:</strong> {{ r.paciente_nasc }}{% endif %}</div>
+      <div><strong>Data:</strong> {{ r.data }}</div>
+    </div>
+
+    {% if r.medicamentos %}
+    <div class="secao"><h3>Medicamentos</h3><pre>{{ r.medicamentos }}</pre></div>
+    {% endif %}
+    {% if r.exames %}
+    <div class="secao"><h3>Exames solicitados</h3><pre>{{ r.exames }}</pre></div>
+    {% endif %}
+    {% if r.instrucoes %}
+    <div class="secao"><h3>Orientações</h3><pre>{{ r.instrucoes }}</pre></div>
+    {% endif %}
+
+    <div class="assinatura">
+      <div class="linha"></div>
+      {% if r.medico_nome %}
+      <div class="nome">{{ r.medico_nome }}</div>
+      <div class="crm">CRM {{ r.medico_crm }} — {{ r.medico_especialidade }}</div>
+      {% else %}
+      <div class="crm">Assinatura / carimbo do médico</div>
+      {% endif %}
+    </div>
+    <div class="rodape-clinica">{{ clinica_info | safe }}</div>
+    <div class="qr-simples"><img src="{{ qr }}" alt="QR Code"><span>Escaneie para conferir</span></div>
+    {% endif %}
+  </div>
+  {% endmacro %}
+
+  <div class="toolbar">
+    <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR</button>
+    <a class="btn-pdf" href="{{ url_for('receita_pdf', receita_id=r.id) }}" target="_blank">⬇️ Salvar/Imprimir PDF</a>
+    <a class="btn-zap" href="https://wa.me/{{ zap }}?text={{ msg | urlencode }}" target="_blank">WhatsApp</a>
+    <a class="btn-mail" href="mailto:?subject={{ ('Documento médico - ' ~ r.paciente_nome) | urlencode }}&body={{ msg | urlencode }}">E-mail</a>
+    <a class="btn-back" href="{{ url_for('pacientes_editar', paciente_id=r.paciente_id) }}">Voltar</a>
+  </div>
+
+  {% if duas_vias %}
+    {{ via('1ª VIA – FARMÁCIA') }}
+    {{ via('2ª VIA – PACIENTE') }}
+  {% else %}
+    {{ via('') }}
+  {% endif %}
+</body>
+</html>

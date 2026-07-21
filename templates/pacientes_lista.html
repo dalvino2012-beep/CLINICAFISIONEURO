@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Pacientes{% endblock %}
+{% block content %}
+{% if medico_ctx %}
+<h1>Pacientes de {{ medico_ctx.nome }}</h1>
+<p class="muted" style="margin-top:-0.6rem;">
+  {% if medico_ctx.especialidade %}{{ medico_ctx.especialidade }} — {% endif %}CRM {{ medico_ctx.crm }}
+  &nbsp;·&nbsp; <a href="{{ url_for('medicos_lista') }}">↩ trocar de médico</a>
+</p>
+{% else %}
+<h1>Pacientes</h1>
+{% endif %}
+<div class="actions">
+  <form class="search-box" method="get">
+    {% if medico_ctx %}<input type="hidden" name="medico" value="{{ medico_ctx.id }}">{% endif %}
+    <input type="text" name="q" placeholder="Digite o nome do paciente" value="{{ termo }}" autofocus>
+    <button class="btn btn-small" type="submit">Buscar</button>
+  </form>
+  <a class="btn" href="{{ url_for('pacientes_novo') }}">+ Novo paciente</a>
+</div>
+<div class="card">
+  {% if pacientes %}
+  <table>
+    <thead>
+      <tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Nascimento</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in pacientes %}
+      <tr>
+        <td>{{ p.nome }}</td>
+        <td>{{ p.cpf }}</td>
+        <td>{{ p.telefone or '-' }}</td>
+        <td>{{ p.data_nascimento or '-' }}</td>
+        <td class="text-right"><a class="btn btn-small" href="{{ url_for('pacientes_editar', paciente_id=p.id) }}">Editar</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhum paciente encontrado.</p>
+  {% endif %}
+</div>
+{% endblock %}

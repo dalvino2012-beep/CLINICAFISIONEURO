@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Pacientes de {{ medico.nome }}{% endblock %}
+{% block content %}
+<h1>Pacientes de {{ medico.nome }}</h1>
+<p class="muted">{{ medico.especialidade }} — CRM {{ medico.crm }}{% if medico.sala %} · Sala {{ medico.sala }}{% endif %}</p>
+<p class="muted">Marque quais pacientes são atendidos por este médico. Só ele verá o prontuário e emitirá as receitas desses pacientes. (Cadastro feito pelo administrador.)</p>
+
+<div class="card">
+  <div class="actions" style="margin-bottom:0.8rem;">
+    <input type="text" id="busca" onkeyup="filtrar()" placeholder="Filtrar por nome ou CPF" style="padding:0.5rem; border:1px solid #dde5e2; border-radius:6px; min-width:260px;">
+    <button type="button" class="btn btn-small btn-secondary" onclick="marcar(true)">Marcar todos</button>
+    <button type="button" class="btn btn-small btn-secondary" onclick="marcar(false)">Limpar</button>
+  </div>
+  <form method="post">
+    {% if pacientes %}
+    <table id="tab-pac">
+      <thead><tr><th style="width:60px;">Vinc.</th><th>Nome</th><th>CPF</th></tr></thead>
+      <tbody>
+        {% for p in pacientes %}
+        <tr>
+          <td><input type="checkbox" class="pac-chk" name="paciente_ids" value="{{ p.id }}" {{ 'checked' if p.id in vinculados }}></td>
+          <td>{{ p.nome }}</td>
+          <td>{{ p.cpf }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">Nenhum paciente cadastrado ainda.</p>
+    {% endif %}
+    <div style="margin-top:1rem;">
+      <button type="submit" class="btn">Salvar vínculos</button>
+      <a class="btn btn-secondary" href="{{ url_for('medicos_lista') }}">Voltar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  function marcar(v) { document.querySelectorAll('.pac-chk').forEach(function (c) { c.checked = v; }); }
+  function filtrar() {
+    var t = document.getElementById('busca').value.toLowerCase();
+    document.querySelectorAll('#tab-pac tbody tr').forEach(function (tr) {
+      tr.style.display = tr.innerText.toLowerCase().indexOf(t) > -1 ? '' : 'none';
+    });
+  }
+</script>
+{% endblock %}
