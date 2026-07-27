@@ -20,6 +20,9 @@
     <nav class="nav-row">
       <a class="{{ 'active' if p == '/' }}" href="{{ url_for('dashboard') }}">Painel</a>
       <a class="{{ 'active' if p.startswith('/pacientes') }}" href="{{ url_for('pacientes_lista') }}">Pacientes</a>
+      {% if g.user.perfil == 'medico' %}
+      <a class="{{ 'active' if p.startswith('/minha-fila') }}" href="{{ url_for('minha_fila') }}">Minha fila</a>
+      {% endif %}
       <a class="{{ 'active' if p.startswith('/medicos') }}" href="{{ url_for('medicos_lista') }}">Médicos</a>
       <a class="{{ 'active' if p.startswith('/agenda') }}" href="{{ url_for('agenda_lista') }}">Agenda</a>
       <a class="{{ 'active' if p.startswith('/balcao') or p.startswith('/atendimento') }}" href="{{ url_for('balcao') }}">Balcão</a>

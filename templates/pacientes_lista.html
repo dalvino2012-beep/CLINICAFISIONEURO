@@ -1,23 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Pacientes{% endblock %}
 {% block content %}
+{% set modo_individual = (g.user.perfil == 'medico') or medico_ctx %}
 {% if medico_ctx %}
-<h1>Pacientes de {{ medico_ctx.nome }}</h1>
+<h1>Atendimento de {{ medico_ctx.nome }}</h1>
 <p class="muted" style="margin-top:-0.6rem;">
   {% if medico_ctx.especialidade %}{{ medico_ctx.especialidade }} — {% endif %}CRM {{ medico_ctx.crm }}
   &nbsp;·&nbsp; <a href="{{ url_for('medicos_lista') }}">↩ trocar de médico</a>
 </p>
+{% elif modo_individual %}
+<h1>Qual paciente será atendido?</h1>
 {% else %}
 <h1>Pacientes</h1>
 {% endif %}
+
 <div class="actions">
-  <form class="search-box" method="get">
+  <form class="search-box" method="get" style="{% if modo_individual %}flex:1;{% endif %}">
     {% if medico_ctx %}<input type="hidden" name="medico" value="{{ medico_ctx.id }}">{% endif %}
-    <input type="text" name="q" placeholder="Digite o nome do paciente" value="{{ termo }}" autofocus>
+    <input type="text" name="q" placeholder="Digite o nome do paciente" value="{{ termo }}" autofocus
+           style="{% if modo_individual %}min-width:320px; font-size:1.05rem; padding:0.6rem;{% endif %}">
     <button class="btn btn-small" type="submit">Buscar</button>
+    {% if termo %}<a class="btn btn-small btn-secondary" href="{{ url_for('pacientes_lista', medico=medico_ctx.id if medico_ctx else None) }}">Limpar</a>{% endif %}
   </form>
   <a class="btn" href="{{ url_for('pacientes_novo') }}">+ Novo paciente</a>
 </div>
+
+{% if modo_individual and not termo %}
+<div class="card" style="text-align:center; padding:2.5rem 1rem;">
+  <p style="font-size:1.15rem; color:var(--primary-dark); font-weight:600; margin:0 0 0.3rem;">
+    👆 Digite o nome do paciente no campo acima
+  </p>
+  <p class="muted" style="margin:0;">O paciente aparece aqui depois que você buscar — um de cada vez, sem misturar com os outros.</p>
+</div>
+{% else %}
 <div class="card">
   {% if pacientes %}
   <table>
@@ -31,13 +46,14 @@
         <td>{{ p.cpf }}</td>
         <td>{{ p.telefone or '-' }}</td>
         <td>{{ p.data_nascimento or '-' }}</td>
-        <td class="text-right"><a class="btn btn-small" href="{{ url_for('pacientes_editar', paciente_id=p.id) }}">Editar</a></td>
+        <td class="text-right"><a class="btn btn-small" href="{{ url_for('pacientes_editar', paciente_id=p.id) }}">Abrir ficha</a></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
   {% else %}
-  <p class="muted">Nenhum paciente encontrado.</p>
+  <p class="muted">Nenhum paciente encontrado{% if termo %} para “{{ termo }}”{% endif %}.</p>
   {% endif %}
 </div>
+{% endif %}
 {% endblock %}

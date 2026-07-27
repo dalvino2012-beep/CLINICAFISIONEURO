@@ -111,6 +111,10 @@ def is_medico():
     return g.user is not None and g.user["perfil"] == "medico"
 
 
+def is_admin_user():
+    return g.user is not None and g.user["perfil"] == "admin"
+
+
 def pode_receita():
     """Quem pode abrir/emitir/imprimir receitas: médico ou administrador."""
     return g.user is not None and g.user["perfil"] in ("medico", "admin")
@@ -160,7 +164,12 @@ app.jinja_env.globals["pode_receita"] = pode_receita
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    trocar = request.args.get("como", "").strip()  # "entrar como" um médico específico (menu Médicos)
     if g.user is not None:
+        if trocar:
+            # sai do usuário atual para o médico entrar com a senha dele
+            session.clear()
+            return redirect(url_for("login", como=trocar))
         return redirect(url_for("dashboard"))
     if request.method == "POST":
         login_ = request.form.get("login", "").strip()
@@ -190,7 +199,7 @@ def login():
            ORDER BY u.nome"""
     ).fetchall()
     db.close()
-    return render_template("login.html", medicos_login=medicos_login)
+    return render_template("login.html", medicos_login=medicos_login, pre_login=trocar)
 
 
 @app.route("/logout")
@@ -312,7 +321,7 @@ def pacientes_novo():
             flash("Já existe um paciente com este CPF.", "error")
         finally:
             db.close()
-    return render_template("pacientes_form.html", paciente=None, anexos=[], receitas=[], evolucoes=[])
+    return render_template("pacientes_form.html", paciente=None, anexos=[], receitas=[], evolucoes=[], minha_sala="")
 
 
 @app.route("/pacientes/<int:paciente_id>/editar", methods=["GET", "POST"])
@@ -359,9 +368,47 @@ def pacientes_editar(paciente_id):
            WHERE e.paciente_id = ? ORDER BY e.criado_em DESC""",
         (paciente_id,),
     ).fetchall()
+    # sala sugerida no botão "Chamar no telão": a sala cadastrada do médico logado
+    # (fica em branco se não houver — o médico digita a sala em que estiver na hora)
+    minha_sala = ""
+    if is_medico():
+        mid = medico_id_atual()
+        if mid:
+            m = db.execute("SELECT sala FROM medicos WHERE id = ?", (mid,)).fetchone()
+            minha_sala = (m["sala"] if m and m["sala"] else "") or ""
     db.close()
     return render_template("pacientes_form.html", paciente=paciente, anexos=anexos,
-                           receitas=receitas, evolucoes=evolucoes)
+                           receitas=receitas, evolucoes=evolucoes, minha_sala=minha_sala)
+
+
+@app.route("/pacientes/<int:paciente_id>/chamar-telao", methods=["POST"])
+@login_required
+def paciente_chamar_telao(paciente_id):
+    db = get_db()
+    paciente = db.execute("SELECT * FROM pacientes WHERE id = ?", (paciente_id,)).fetchone()
+    if paciente is None:
+        db.close()
+        abort(404)
+    if not paciente_acessivel(db, paciente_id):
+        db.close()
+        flash("Este paciente não está vinculado a você.", "error")
+        return redirect(url_for("pacientes_lista"))
+    sala = request.form.get("sala", "").strip()
+    hoje = date.today().isoformat()
+    medico_id = medico_id_atual()  # None se for admin/recepção
+    ultimo = db.execute("SELECT MAX(numero) AS m FROM senhas WHERE data = ?", (hoje,)).fetchone()["m"]
+    numero = (ultimo or 0) + 1
+    db.execute(
+        """INSERT INTO senhas (numero, data, paciente_id, medico_id, sala, status, chamado_em)
+           VALUES (?, ?, ?, ?, ?, 'chamado', datetime('now','localtime'))""",
+        (numero, hoje, paciente_id, medico_id, sala),
+    )
+    db.commit()
+    db.close()
+    primeiro = (paciente["nome"] or "").split(" ")[0]
+    destino = f"sala {sala}" if sala else "o consultório"
+    flash(f"📢 {primeiro} foi chamado(a) no telão para {destino}.", "success")
+    return redirect(url_for("pacientes_editar", paciente_id=paciente_id))
 
 
 @app.route("/anexos/<int:anexo_id>/baixar")
@@ -1067,7 +1114,13 @@ def _ler_form_paciente():
 @login_required
 def medicos_lista():
     db = get_db()
-    rows = db.execute("SELECT * FROM medicos ORDER BY nome").fetchall()
+    rows = db.execute(
+        """SELECT med.*,
+                  (SELECT u.login FROM usuarios u
+                   WHERE u.medico_id = med.id AND u.perfil = 'medico' AND u.ativo = 1
+                   ORDER BY u.id LIMIT 1) AS user_login
+           FROM medicos med ORDER BY med.nome"""
+    ).fetchall()
     db.close()
     return render_template("medicos_lista.html", medicos=rows)
 
@@ -1514,6 +1567,119 @@ def balcao_finalizar(senha_id):
     db.commit()
     db.close()
     return redirect(url_for("balcao"))
+
+
+# ---------- Fila do médico (chamar o próximo no telão) ----------
+
+def _medico_da_fila():
+    """Qual médico está operando a fila: o médico logado, ou (admin) via ?medico=."""
+    mid = medico_id_atual()
+    if mid:
+        return mid
+    if g.user and g.user["perfil"] == "admin":
+        val = request.values.get("medico", "").strip()
+        return int(val) if val.isdigit() else None
+    return None
+
+
+@app.route("/minha-fila")
+@login_required
+def minha_fila():
+    mid = _medico_da_fila()
+    if not mid:
+        flash("Entre como médico para ver a sua fila (menu Médicos → Entrar).", "error")
+        return redirect(url_for("balcao"))
+    hoje = date.today().isoformat()
+    db = get_db()
+    med = db.execute("SELECT * FROM medicos WHERE id = ?", (mid,)).fetchone()
+    aguardando = db.execute(
+        """SELECT s.*, p.nome AS paciente_nome FROM senhas s
+           LEFT JOIN pacientes p ON p.id = s.paciente_id
+           WHERE s.data=? AND s.medico_id=? AND s.status='aguardando_medico'
+           ORDER BY s.prioridade DESC, s.numero""",
+        (hoje, mid),
+    ).fetchall()
+    chamados = db.execute(
+        """SELECT s.*, p.nome AS paciente_nome FROM senhas s
+           LEFT JOIN pacientes p ON p.id = s.paciente_id
+           WHERE s.data=? AND s.medico_id=? AND s.status='chamado'
+           ORDER BY s.chamado_em DESC""",
+        (hoje, mid),
+    ).fetchall()
+    minha_sala = (med["sala"] if med and med["sala"] else "") or ""
+    db.close()
+    return render_template("minha_fila.html", med=med, aguardando=aguardando,
+                           chamados=chamados, minha_sala=minha_sala)
+
+
+def _chamar_senha_telao(senha_id, sala):
+    db = get_db()
+    s = db.execute("SELECT * FROM senhas WHERE id=?", (senha_id,)).fetchone()
+    if s is None:
+        db.close()
+        return None
+    mid = medico_id_atual()
+    if mid and s["medico_id"] != mid:  # médico só chama a própria fila
+        db.close()
+        return False
+    db.execute(
+        "UPDATE senhas SET status='chamado', sala=?, chamado_em=datetime('now','localtime') WHERE id=?",
+        (sala, senha_id),
+    )
+    db.commit()
+    med_id = s["medico_id"]
+    db.close()
+    return med_id
+
+
+@app.route("/minha-fila/chamar-proximo", methods=["POST"])
+@login_required
+def minha_fila_chamar_proximo():
+    mid = _medico_da_fila()
+    if not mid:
+        abort(403)
+    sala = request.form.get("sala", "").strip()
+    hoje = date.today().isoformat()
+    db = get_db()
+    prox = db.execute(
+        """SELECT id FROM senhas WHERE data=? AND medico_id=? AND status='aguardando_medico'
+           ORDER BY prioridade DESC, numero LIMIT 1""",
+        (hoje, mid),
+    ).fetchone()
+    db.close()
+    if prox:
+        _chamar_senha_telao(prox["id"], sala)
+        flash("📢 Próximo paciente chamado no telão.", "success")
+    else:
+        flash("Não há paciente aguardando na sua fila.", "error")
+    return redirect(url_for("minha_fila", medico=mid if is_admin_user() else None))
+
+
+@app.route("/minha-fila/chamar/<int:senha_id>", methods=["POST"])
+@login_required
+def minha_fila_chamar(senha_id):
+    sala = request.form.get("sala", "").strip()
+    res = _chamar_senha_telao(senha_id, sala)
+    if res is None:
+        abort(404)
+    if res is False:
+        flash("Essa senha não é da sua fila.", "error")
+    else:
+        flash("📢 Paciente chamado no telão.", "success")
+    return redirect(url_for("minha_fila", medico=res if (res and is_admin_user()) else None))
+
+
+@app.route("/minha-fila/finalizar/<int:senha_id>", methods=["POST"])
+@login_required
+def minha_fila_finalizar(senha_id):
+    db = get_db()
+    s = db.execute("SELECT medico_id FROM senhas WHERE id=?", (senha_id,)).fetchone()
+    db.execute("UPDATE senhas SET status='finalizado' WHERE id=?", (senha_id,))
+    db.commit()
+    med_id = s["medico_id"] if s else None
+    db.close()
+    flash("Consulta finalizada.", "success")
+    return redirect(url_for("minha_fila", medico=med_id if is_admin_user() else None))
 
 
 @app.route("/atendimento/medico/<int:senha_id>", methods=["GET", "POST"])

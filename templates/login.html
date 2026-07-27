@@ -7,7 +7,8 @@
          style="display:block; margin:0 auto 0.6rem; width:260px; max-width:90%;">
     <div class="subtitle">Sistema de Gestão</div>
 
-    {% if medicos_login %}
+    {% set pre = pre_login | default('') %}
+    {% if medicos_login and not pre %}
     <div class="medico-select">
       <p class="muted" style="margin-bottom:0.5rem;">👨‍⚕️ Sou médico(a) — clique no seu nome:</p>
       {% for m in medicos_login %}
@@ -19,15 +20,21 @@
     </div>
     {% endif %}
 
+    {% if pre %}
+    <p style="text-align:center; color:var(--primary-dark); font-weight:600; margin-bottom:0.8rem;">
+      Entrando como <u>{{ pre }}</u> — digite a senha:
+    </p>
+    {% endif %}
+
     <form method="post">
       <div class="form-group">
         <label for="login">Usuário</label>
-        <input type="text" id="login" name="login" required autofocus
-               autocapitalize="none" autocorrect="off" spellcheck="false">
+        <input type="text" id="login" name="login" required {{ '' if pre else 'autofocus' }}
+               value="{{ pre }}" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
       <div class="form-group">
         <label for="senha">Senha</label>
-        <input type="password" id="senha" name="senha" required>
+        <input type="password" id="senha" name="senha" required {{ 'autofocus' if pre else '' }}>
       </div>
       <button type="submit" class="btn">Entrar</button>
     </form>

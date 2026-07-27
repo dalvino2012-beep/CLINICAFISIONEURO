@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Minha fila{% endblock %}
+{% block content %}
+<h1 style="margin-bottom:0.2rem;">Minha fila de atendimento</h1>
+<p class="muted" style="margin-top:0;">{{ med.nome }}{% if med.especialidade %} — {{ med.especialidade }}{% endif %}</p>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+  <label style="font-weight:600; color:var(--primary-dark); margin:0; display:flex; align-items:center; gap:0.4rem;">
+    🚪 Sala onde você está agora:
+    <input type="text" id="sala_atual" value="{{ minha_sala }}" placeholder="ex.: 3"
+           style="width:110px; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-size:1.05rem;">
+  </label>
+  <form method="post" action="{{ url_for('minha_fila_chamar_proximo') }}" onsubmit="return injSala(this)" style="margin:0;">
+    <input type="hidden" name="sala">
+    {% if g.user.perfil == 'admin' %}<input type="hidden" name="medico" value="{{ med.id }}">{% endif %}
+    <button class="btn" type="submit" {{ 'disabled' if not aguardando }}
+            style="font-size:1.05rem;">📢 Chamar o próximo no telão</button>
+  </form>
+  <p class="muted" style="margin:0; flex-basis:100%;">O próximo da fila aparece na TV com <strong>senha + nome + a sala informada acima</strong>.</p>
+</div>
+
+<div class="card">
+  <h2>Aguardando você ({{ aguardando|length }})</h2>
+  {% if aguardando %}
+  <table>
+    <thead><tr><th>Senha</th><th>Paciente</th><th></th></tr></thead>
+    <tbody>
+      {% for s in aguardando %}
+      <tr>
+        <td><strong>{{ s | senha }}</strong>{% if s.prioridade %} <span class="badge" style="background:#b7791f">Prioritária</span>{% endif %}</td>
+        <td>{{ s.paciente_nome or '-' }}</td>
+        <td class="text-right">
+          <form method="post" action="{{ url_for('minha_fila_chamar', senha_id=s.id) }}" onsubmit="return injSala(this)" style="display:inline">
+            <input type="hidden" name="sala">
+            <button class="btn btn-small" type="submit">📺 Chamar</button>
+          </form>
+          <a class="btn btn-small" style="background:#0B5FA5;" href="{{ url_for('atendimento_medico', senha_id=s.id) }}">🩺 Atender</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Ninguém aguardando na sua fila agora.</p>{% endif %}
+</div>
+
+{% if chamados %}
+<div class="card">
+  <h2>Chamados / em atendimento</h2>
+  <table>
+    <thead><tr><th>Senha</th><th>Paciente</th><th>Sala</th><th></th></tr></thead>
+    <tbody>
+      {% for s in chamados %}
+      <tr>
+        <td><strong>{{ s | senha }}</strong></td>
+        <td>{{ s.paciente_nome or '-' }}</td>
+        <td>{{ s.sala or '-' }}</td>
+        <td class="text-right">
+          <a class="btn btn-small" style="background:#0B5FA5;" href="{{ url_for('atendimento_medico', senha_id=s.id) }}">🩺 Atender</a>
+          <form method="post" action="{{ url_for('minha_fila_finalizar', senha_id=s.id) }}" style="display:inline">
+            <button class="btn btn-small btn-secondary" type="submit">✔ Finalizar</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script>
+  function injSala(form) {
+    form.querySelector('input[name=sala]').value = document.getElementById('sala_atual').value.trim();
+    return true;
+  }
+</script>
+{% endblock %}

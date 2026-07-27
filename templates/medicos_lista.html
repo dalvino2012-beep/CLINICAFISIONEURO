@@ -40,6 +40,9 @@
         <td>{{ m.telefone or '-' }}</td>
         <td><span class="badge {{ 'badge-atendida' if m.ativo else 'badge-cancelada' }}">{{ 'Ativo' if m.ativo else 'Inativo' }}</span></td>
         <td class="text-right">
+          {% if m.ativo and m.user_login %}
+          <a class="btn btn-small" href="{{ url_for('login', como=m.user_login) }}">▶ Entrar (senha)</a>
+          {% endif %}
           {% if g.user.perfil == 'admin' %}
           <a class="btn btn-small" href="{{ url_for('medicos_pacientes', medico_id=m.id) }}">Pacientes</a>
           <a class="btn btn-small" href="{{ url_for('medicos_editar', medico_id=m.id) }}">Editar</a>

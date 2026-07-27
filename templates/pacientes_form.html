@@ -2,6 +2,21 @@
 {% block title %}{{ 'Editar' if paciente else 'Novo' }} Paciente{% endblock %}
 {% block content %}
 <h1 style="margin-bottom:0.4rem;">{{ 'Editar' if paciente else 'Novo' }} Paciente</h1>
+{% if paciente %}
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="post" action="{{ url_for('paciente_chamar_telao', paciente_id=paciente.id) }}"
+        style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <strong style="color:var(--primary-dark); font-size:1.05rem;">📢 Chamar no telão</strong>
+    <label style="margin:0; display:flex; align-items:center; gap:0.4rem;">
+      Sala/consultório:
+      <input type="text" name="sala" value="{{ minha_sala }}" placeholder="ex.: 3"
+             style="width:90px; padding:0.45rem; border:1px solid var(--border); border-radius:6px;">
+    </label>
+    <button class="btn" type="submit">Chamar {{ paciente.nome.split(' ')[0] }} para a minha sala →</button>
+  </form>
+  <p class="muted" style="margin:0.6rem 0 0;">O nome do paciente aparece na TV da sala de espera (telão) chamando para a sala informada.</p>
+</div>
+{% endif %}
 <div class="card">
   <form method="post" enctype="multipart/form-data" class="compacto">
     <div class="form-row">
