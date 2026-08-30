@@ -1,5 +1,6 @@
-﻿import uuid
-from datetime import date
+﻿import re
+import uuid
+from datetime import date, timedelta
 from functools import wraps
 from pathlib import Path
 
@@ -63,13 +64,37 @@ def _salvar_anexos(db, paciente_id):
     db.commit()
 
 
+PONTO_SEQUENCIA = ["entrada", "saida_almoco", "retorno_almoco", "saida"]
+PONTO_LABELS = {
+    "entrada": "Entrada",
+    "saida_almoco": "Saída (almoço)",
+    "retorno_almoco": "Retorno (almoço)",
+    "saida": "Saída",
+}
+
+
+@app.context_processor
+def _ponto_labels_ctx():
+    return {"ponto_labels": PONTO_LABELS}
+
+
 @app.before_request
 def load_logged_in_user():
     user_id = session.get("user_id")
     g.user = None
+    g.ponto_proximo = None
+    g.ponto_feitos = {}
     if user_id is not None:
         db = get_db()
         g.user = db.execute("SELECT * FROM usuarios WHERE id = ?", (user_id,)).fetchone()
+        if g.user is not None:
+            hoje = date.today().isoformat()
+            regs = db.execute(
+                "SELECT tipo, criado_em FROM ponto WHERE usuario_id=? AND data=? ORDER BY id",
+                (g.user["id"], hoje),
+            ).fetchall()
+            g.ponto_feitos = {r["tipo"]: r["criado_em"] for r in regs}
+            g.ponto_proximo = next((t for t in PONTO_SEQUENCIA if t not in g.ponto_feitos), None)
         db.close()
 
 
@@ -208,6 +233,48 @@ def logout():
     return redirect(url_for("login"))
 
 
+@app.route("/ponto/bater", methods=["POST"])
+@login_required
+def ponto_bater():
+    hoje = date.today().isoformat()
+    db = get_db()
+    feitos = {r["tipo"] for r in db.execute(
+        "SELECT tipo FROM ponto WHERE usuario_id=? AND data=?", (g.user["id"], hoje)
+    ).fetchall()}
+    proximo = next((t for t in PONTO_SEQUENCIA if t not in feitos), None)
+    if proximo is None:
+        flash("Você já registrou todos os pontos de hoje.", "error")
+    else:
+        db.execute(
+            "INSERT INTO ponto (usuario_id, tipo, data) VALUES (?, ?, ?)",
+            (g.user["id"], proximo, hoje),
+        )
+        db.commit()
+        flash(f"Ponto registrado: {PONTO_LABELS[proximo]}.", "success")
+    db.close()
+    return redirect(request.referrer or url_for("dashboard"))
+
+
+@app.route("/ponto")
+@admin_required
+def ponto_lista():
+    data_sel = request.args.get("data") or date.today().isoformat()
+    db = get_db()
+    usuarios = db.execute("SELECT id, nome FROM usuarios WHERE ativo=1 ORDER BY nome").fetchall()
+    registros = db.execute(
+        "SELECT usuario_id, tipo, criado_em FROM ponto WHERE data=?", (data_sel,)
+    ).fetchall()
+    db.close()
+    mapa = {}
+    for r in registros:
+        mapa.setdefault(r["usuario_id"], {})[r["tipo"]] = r["criado_em"]
+    linhas = []
+    for u in usuarios:
+        pontos = mapa.get(u["id"], {})
+        linhas.append({"nome": u["nome"], "pontos": pontos})
+    return render_template("ponto_lista.html", linhas=linhas, data_sel=data_sel)
+
+
 @app.route("/alterar-senha", methods=["GET", "POST"])
 @login_required
 def alterar_senha():
@@ -239,31 +306,82 @@ def alterar_senha():
 @app.route("/")
 @login_required
 def dashboard():
+    hoje = date.today()
+    data_min = (hoje - timedelta(days=5)).isoformat()
+    data_max = (hoje + timedelta(days=30)).isoformat()
+    data_sel = request.args.get("data", "").strip() or hoje.isoformat()
+    if data_sel < data_min or data_sel > data_max:
+        data_sel = hoje.isoformat()
+
     db = get_db()
-    hoje = date.today().isoformat()
     total_pacientes = db.execute("SELECT COUNT(*) c FROM pacientes").fetchone()["c"]
     total_medicos = db.execute("SELECT COUNT(*) c FROM medicos WHERE ativo = 1").fetchone()["c"]
-    consultas_hoje = db.execute(
-        "SELECT COUNT(*) c FROM consultas WHERE data = ?", (hoje,)
+
+    filtro_medico = ""
+    params = [data_sel]
+    if is_medico():
+        filtro_medico = " AND c.medico_id = ?"
+        params.append(medico_id_atual() or -1)
+
+    consultas_dia = db.execute(
+        f"SELECT COUNT(*) c FROM consultas c WHERE c.data = ?{filtro_medico}", params
     ).fetchone()["c"]
     proximas = db.execute(
-        """SELECT c.*, p.nome AS paciente_nome, m.nome AS medico_nome
+        f"""SELECT c.*, p.nome AS paciente_nome, m.nome AS medico_nome
            FROM consultas c
            JOIN pacientes p ON p.id = c.paciente_id
            JOIN medicos m ON m.id = c.medico_id
-           WHERE c.data = ? AND c.status != 'cancelada'
+           WHERE c.data = ? AND c.status != 'cancelada'{filtro_medico}
            ORDER BY c.hora""",
-        (hoje,),
+        params,
     ).fetchall()
     db.close()
     return render_template(
         "dashboard.html",
         total_pacientes=total_pacientes,
         total_medicos=total_medicos,
-        consultas_hoje=consultas_hoje,
+        consultas_hoje=consultas_dia,
         proximas=proximas,
-        hoje=hoje,
+        hoje=hoje.isoformat(),
+        data_sel=data_sel,
+        data_min=data_min,
+        data_max=data_max,
     )
+
+
+# ---------- Medicamento de alto custo ----------
+
+@app.route("/medicamento-alto-custo")
+@login_required
+def medicamento_alto_custo():
+    return render_template("medicamento_alto_custo.html")
+
+
+# ---------- Pacientes Total ----------
+
+@app.route("/pacientes-total")
+@login_required
+def pacientes_total():
+    if not (is_medico() or is_admin_user()):
+        flash("Acesso restrito a administrador e médicos.", "error")
+        return redirect(url_for("pacientes_lista"))
+    db = get_db()
+    sql = """SELECT p.*,
+                    (SELECT c.data FROM consultas c WHERE c.paciente_id = p.id
+                     ORDER BY c.data DESC, c.hora DESC LIMIT 1) AS ultima_consulta,
+                    (SELECT c.tipo_atendimento FROM consultas c WHERE c.paciente_id = p.id
+                     ORDER BY c.data DESC, c.hora DESC LIMIT 1) AS ultimo_tipo_atendimento,
+                    (SELECT c.convenio FROM consultas c WHERE c.paciente_id = p.id
+                     ORDER BY c.data DESC, c.hora DESC LIMIT 1) AS ultimo_convenio
+             FROM pacientes p"""
+    params = []
+    if is_medico():
+        sql += " WHERE p.id IN (SELECT paciente_id FROM medico_pacientes WHERE medico_id = ?)"
+        params.append(medico_id_atual() or -1)
+    sql += " ORDER BY p.nome"
+    pacientes = db.execute(sql, params).fetchall()
+    db.close()
+    return render_template("pacientes_total.html", pacientes=pacientes)
 
 
 # ---------- Pacientes ----------
@@ -308,9 +426,9 @@ def pacientes_novo():
         db = get_db()
         try:
             cur = db.execute(
-                """INSERT INTO pacientes (nome, cpf, data_nascimento, telefone, endereco, historico, observacoes)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (dados["nome"], dados["cpf"], dados["data_nascimento"], dados["telefone"], dados["endereco"], dados["historico"], dados["observacoes"]),
+                """INSERT INTO pacientes (nome, cpf, data_nascimento, telefone, whatsapp, email, endereco, cep, historico, observacoes)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (dados["nome"], dados["cpf"], dados["data_nascimento"], dados["telefone"], dados["whatsapp"], dados["email"], dados["endereco"], dados["cep"], dados["historico"], dados["observacoes"]),
             )
             novo_id = cur.lastrowid
             db.commit()
@@ -341,9 +459,9 @@ def pacientes_editar(paciente_id):
         dados = _ler_form_paciente()
         try:
             db.execute(
-                """UPDATE pacientes SET nome=?, cpf=?, data_nascimento=?, telefone=?, endereco=?, historico=?, observacoes=?
+                """UPDATE pacientes SET nome=?, cpf=?, data_nascimento=?, telefone=?, whatsapp=?, email=?, endereco=?, cep=?, historico=?, observacoes=?
                    WHERE id=?""",
-                (dados["nome"], dados["cpf"], dados["data_nascimento"], dados["telefone"], dados["endereco"], dados["historico"], dados["observacoes"], paciente_id),
+                (dados["nome"], dados["cpf"], dados["data_nascimento"], dados["telefone"], dados["whatsapp"], dados["email"], dados["endereco"], dados["cep"], dados["historico"], dados["observacoes"], paciente_id),
             )
             db.commit()
             _salvar_anexos(db, paciente_id)
@@ -368,14 +486,8 @@ def pacientes_editar(paciente_id):
            WHERE e.paciente_id = ? ORDER BY e.criado_em DESC""",
         (paciente_id,),
     ).fetchall()
-    # sala sugerida no botão "Chamar no telão": a sala cadastrada do médico logado
-    # (fica em branco se não houver — o médico digita a sala em que estiver na hora)
+    # campo "Sala/consultório" sempre em branco: o médico digita a sala em que estiver na hora
     minha_sala = ""
-    if is_medico():
-        mid = medico_id_atual()
-        if mid:
-            m = db.execute("SELECT sala FROM medicos WHERE id = ?", (mid,)).fetchone()
-            minha_sala = (m["sala"] if m and m["sala"] else "") or ""
     db.close()
     return render_template("pacientes_form.html", paciente=paciente, anexos=anexos,
                            receitas=receitas, evolucoes=evolucoes, minha_sala=minha_sala)
@@ -458,14 +570,22 @@ LOGO_AZUL = Path(__file__).parent / "static" / "img" / "logo_fisioneuro_azul.png
 
 
 def _faixa_azul(canvas, doc):
-    """Desenha a faixa azul vertical à esquerda da folha:
-    8 mm (0,8 cm) de largura, deslocada 10 mm (1,0 cm) da borda esquerda, em toda a altura."""
+    """Desenha linhas diagonais cruzadas na faixa lateral dos documentos."""
     from reportlab.lib.units import mm
     from reportlab.lib.colors import HexColor
     canvas.saveState()
-    canvas.setFillColor(HexColor(AZUL))
-    # faixa começando na borda esquerda (x = 0), 8 mm de largura, toda a altura
-    canvas.rect(0, 0, 8 * mm, doc.pagesize[1], stroke=0, fill=1)
+    largura = 8 * mm
+    altura = doc.pagesize[1]
+    area = canvas.beginPath()
+    area.rect(0, 0, largura, altura)
+    canvas.clipPath(area, stroke=0, fill=0)
+    canvas.setLineWidth(0.25 * mm)
+    canvas.setStrokeColor(HexColor("#555555"))
+    passo = 4 * mm
+    for inicio in range(-int(altura / passo) - 2, int(altura / passo) + 3):
+        y = inicio * passo
+        canvas.line(-largura, y, largura * 2, y + largura * 3)
+        canvas.line(-largura, y + largura * 3, largura * 2, y)
     canvas.restoreState()
 
 
@@ -493,7 +613,7 @@ def _qr_texto_receita(r):
     }.get(r["tipo"], "Receita")
     linhas = [
         "FISIONEURO Clínica Médica",
-        f"{tipo_nome} nº {r['id']} - {r['data']}",
+        f"{tipo_nome} nº {r['id']} - {_data_iso_para_br(r['data'])}",
         f"Paciente: {r['paciente_nome']}",
         f"CPF: {r['paciente_cpf'] or '-'}",
     ]
@@ -529,7 +649,7 @@ def _receita_completa(db, receita_id):
     return db.execute(
         """SELECT r.*, p.nome AS paciente_nome, p.cpf AS paciente_cpf,
                   p.telefone AS paciente_telefone, p.data_nascimento AS paciente_nasc,
-                  p.endereco AS paciente_endereco,
+                  p.endereco AS paciente_endereco, p.email AS paciente_email,
                   m.nome AS medico_nome, m.crm AS medico_crm, m.especialidade AS medico_especialidade
            FROM receitas r
            JOIN pacientes p ON p.id = r.paciente_id
@@ -560,7 +680,7 @@ def receitas_nova(paciente_id):
         exames = request.form.get("exames", "").strip()
         instrucoes = request.form.get("instrucoes", "").strip()
         evolucao = request.form.get("evolucao", "").strip()
-        data_ = request.form.get("data", "").strip() or date.today().isoformat()
+        data_ = _data_br_para_iso(request.form.get("data", "")) or date.today().isoformat()
         if not medicamentos and not exames:
             flash("Informe ao menos um medicamento ou exame.", "error")
         else:
@@ -871,7 +991,7 @@ def _flowables_controlada(r, rotulo):
         esp = f" — {r['medico_especialidade']}" if r["medico_especialidade"] else ""
         med_txt = f"{r['medico_nome']} — CRM {r['medico_crm'] or ''}{esp}"
     # 3 linhas em branco acima da linha = espaço para a médica carimbar e assinar
-    assin = Table([[P(f"DATA: {r['data']}", st_boxcampo),
+    assin = Table([[P(f"DATA: {_data_iso_para_br(r['data'])}", st_boxcampo),
                     P(f"{med_txt}<br/><br/><br/><br/>_______________________________<br/>CARIMBO E ASSINATURA DO MÉDICO", st_assin)]],
                   colWidths=[46 * mm, None])
     assin.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
@@ -972,10 +1092,10 @@ def _flowables_receita(r):
             bloco.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#dde5e2")))
             bloco.append(Spacer(1, 8))
             bloco.append(par(f"<b>{tipo_titulo}</b>", h_sec))
-        nasc = f" — Nasc.: {r['paciente_nasc']}" if r["paciente_nasc"] else ""
+        nasc = f" — Nasc.: {_data_iso_para_br(r['paciente_nasc'])}" if r["paciente_nasc"] else ""
         bloco.append(par(f"<b>Paciente:</b> {r['paciente_nome']}{nasc}", h_label))
         bloco.append(par(f"<b>CPF:</b> {r['paciente_cpf']}", h_label))
-        bloco.append(par(f"<b>Data:</b> {r['data']}", h_label))
+        bloco.append(par(f"<b>Data:</b> {_data_iso_para_br(r['data'])}", h_label))
         bloco.append(Spacer(1, 6))
         if r["medicamentos"]:
             bloco.append(par("Medicamentos", h_sec))
@@ -1096,13 +1216,37 @@ def _gerar_pdf_documentos(receitas, evolucoes):
     return buf.getvalue()
 
 
+def _data_br_para_iso(texto):
+    """Converte DD/MM/AAAA (como digitado nos formulários) para AAAA-MM-DD (usado no banco)."""
+    texto = (texto or "").strip()
+    if len(texto) == 10 and texto[2] == "/" and texto[5] == "/":
+        dd, mm, aaaa = texto[0:2], texto[3:5], texto[6:10]
+        return f"{aaaa}-{mm}-{dd}"
+    return texto
+
+
+def _data_iso_para_br(texto):
+    """Converte AAAA-MM-DD (banco) para DD/MM/AAAA (exibido nos formulários)."""
+    texto = (texto or "").strip()
+    if len(texto) == 10 and texto[4] == "-" and texto[7] == "-":
+        aaaa, mm, dd = texto[0:4], texto[5:7], texto[8:10]
+        return f"{dd}/{mm}/{aaaa}"
+    return texto
+
+
+app.jinja_env.filters["data_br"] = _data_iso_para_br
+
+
 def _ler_form_paciente():
     return {
         "nome": request.form.get("nome", "").strip(),
-        "cpf": request.form.get("cpf", "").strip(),
-        "data_nascimento": request.form.get("data_nascimento", "").strip(),
+        "cpf": re.sub(r"\D", "", request.form.get("cpf", "")),
+        "data_nascimento": _data_br_para_iso(request.form.get("data_nascimento", "")),
         "telefone": request.form.get("telefone", "").strip(),
+        "whatsapp": 1 if request.form.get("whatsapp") else 0,
+        "email": request.form.get("email", "").strip(),
         "endereco": request.form.get("endereco", "").strip(),
+        "cep": re.sub(r"\D", "", request.form.get("cep", "")),
         "historico": request.form.get("historico", "").strip(),
         "observacoes": request.form.get("observacoes", "").strip(),
     }
@@ -1352,11 +1496,26 @@ def agenda_editar(consulta_id):
     return render_template("agenda_form.html", consulta=consulta, pacientes=pacientes, medicos=medicos)
 
 
+@app.route("/agenda/<int:consulta_id>/remarcar", methods=["POST"])
+@login_required
+def agenda_remarcar(consulta_id):
+    nova_data = _data_br_para_iso(request.form.get("nova_data", ""))
+    if len(nova_data) != 10:
+        flash("Data inválida para remarcação.", "error")
+    else:
+        db = get_db()
+        db.execute("UPDATE consultas SET data=? WHERE id=?", (nova_data, consulta_id))
+        db.commit()
+        db.close()
+        flash(f"Consulta remarcada para {_data_iso_para_br(nova_data)}.", "success")
+    return redirect(request.referrer or url_for("dashboard"))
+
+
 def _ler_form_consulta():
     return {
         "paciente_id": request.form.get("paciente_id"),
         "medico_id": request.form.get("medico_id"),
-        "data": request.form.get("data", "").strip(),
+        "data": _data_br_para_iso(request.form.get("data", "")),
         "hora": request.form.get("hora", "").strip(),
         "status": request.form.get("status", "agendada"),
         "observacoes": request.form.get("observacoes", "").strip(),
@@ -1384,7 +1543,7 @@ def totem():
 @app.route("/totem/senha", methods=["POST"])
 def totem_senha():
     prioridade = 1 if request.form.get("prioridade") == "1" else 0
-    cpf = request.form.get("cpf", "").strip()
+    cpf = re.sub(r"\D", "", request.form.get("cpf", ""))
     hoje = date.today().isoformat()
     db = get_db()
 
@@ -1606,7 +1765,8 @@ def minha_fila():
            ORDER BY s.chamado_em DESC""",
         (hoje, mid),
     ).fetchall()
-    minha_sala = (med["sala"] if med and med["sala"] else "") or ""
+    # campo "Sala/consultório" sempre em branco: o médico digita a sala em que estiver na hora
+    minha_sala = ""
     db.close()
     return render_template("minha_fila.html", med=med, aguardando=aguardando,
                            chamados=chamados, minha_sala=minha_sala)
@@ -1966,6 +2126,34 @@ def usuarios_alternar_status(usuario_id):
     db.commit()
     db.close()
     return redirect(url_for("usuarios_lista"))
+
+
+@app.route("/usuarios/<int:usuario_id>/redefinir-senha", methods=["GET", "POST"])
+@admin_required
+def usuarios_redefinir_senha(usuario_id):
+    db = get_db()
+    usuario = db.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,)).fetchone()
+    if usuario is None:
+        db.close()
+        abort(404)
+    if request.method == "POST":
+        nova = request.form.get("nova_senha", "")
+        confirmar = request.form.get("confirmar_senha", "")
+        if len(nova) < 6:
+            flash("A nova senha deve ter ao menos 6 caracteres.", "error")
+        elif nova != confirmar:
+            flash("As senhas não coincidem.", "error")
+        else:
+            db.execute(
+                "UPDATE usuarios SET senha_hash = ? WHERE id = ?",
+                (generate_password_hash(nova), usuario_id),
+            )
+            db.commit()
+            db.close()
+            flash(f"Senha de {usuario['nome']} redefinida com sucesso.", "success")
+            return redirect(url_for("usuarios_lista"))
+    db.close()
+    return render_template("usuarios_redefinir_senha.html", usuario=usuario)
 
 
 if __name__ == "__main__":

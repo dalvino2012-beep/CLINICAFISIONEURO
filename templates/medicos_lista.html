@@ -27,9 +27,10 @@
 {% endif %}
 <div class="card">
   {% if medicos %}
+  <div style="overflow-x:auto;">
   <table>
     <thead>
-      <tr><th>Nome</th><th>CRM</th><th>Especialidade</th><th>Telefone</th><th>Status</th><th></th></tr>
+      <tr><th>Nome</th><th>CRM</th><th>Especialidade</th><th class="nowrap">Telefone</th><th>Status</th><th></th></tr>
     </thead>
     <tbody>
       {% for m in medicos %}
@@ -37,9 +38,9 @@
         <td>{{ m.nome }}</td>
         <td>{{ m.crm }}</td>
         <td>{{ m.especialidade }}</td>
-        <td>{{ m.telefone or '-' }}</td>
+        <td class="nowrap">{{ m.telefone or '-' }}</td>
         <td><span class="badge {{ 'badge-atendida' if m.ativo else 'badge-cancelada' }}">{{ 'Ativo' if m.ativo else 'Inativo' }}</span></td>
-        <td class="text-right">
+        <td class="text-right nowrap">
           {% if m.ativo and m.user_login %}
           <a class="btn btn-small" href="{{ url_for('login', como=m.user_login) }}">▶ Entrar (senha)</a>
           {% endif %}
@@ -55,6 +56,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p class="muted">Nenhum médico cadastrado.</p>
   {% endif %}

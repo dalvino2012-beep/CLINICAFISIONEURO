@@ -9,14 +9,16 @@
     body { margin: 0; min-height: 100vh; background: #0A2A45; color: #fff; font-family: "Segoe UI", Arial, sans-serif; overflow: hidden; }
     .topo { background: #0B5FA5; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
     .topo h1 { margin: 0; font-size: 1.8rem; }
-    .topo .hora { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+    .topo .hora { font-size: 1.6rem; font-variant-numeric: tabular-nums; text-align: right; }
+    .topo .hora .data { font-size: 1rem; opacity: 0.85; font-weight: 400; }
     .atual {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 3rem 1rem; text-align: center;
     }
     .atual .rot { font-size: 1.8rem; opacity: 0.8; letter-spacing: 2px; }
     .atual .senha { font-size: 9rem; font-weight: 800; margin: 0.3rem 0; line-height: 1; }
-    .atual .nome { font-size: 2.4rem; margin-bottom: 0.6rem; }
+    .atual .nome { font-size: 2.9rem; margin-bottom: 0.3rem; }
+    .atual .medico { font-size: 1.5rem; opacity: 0.8; margin-bottom: 0.6rem; }
     .atual .destino { font-size: 3.2rem; font-weight: 700; color: #7CC6FF; }
     .vazio { font-size: 2rem; opacity: 0.6; padding: 5rem; text-align: center; }
     .recentes { display: flex; gap: 1rem; padding: 1.5rem 2rem; flex-wrap: wrap; justify-content: center; }
@@ -33,7 +35,7 @@
       <img src="{{ url_for('static', filename='img/logo_fisioneuro.png') }}" alt="FISIONEURO" style="height:58px;">
       <span>Painel de Chamadas</span>
     </h1>
-    <div class="hora" id="hora">--:--</div>
+    <div class="hora"><div class="data" id="data">--/--/----</div><div id="hora">--:--</div></div>
   </div>
   <div id="area-atual"></div>
   <div class="recentes" id="area-recentes"></div>
@@ -45,6 +47,8 @@
       const agora = new Date();
       document.getElementById('hora').textContent =
         String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+      document.getElementById('data').textContent =
+        String(agora.getDate()).padStart(2, '0') + '/' + String(agora.getMonth() + 1).padStart(2, '0') + '/' + agora.getFullYear();
     }
     setInterval(tick, 1000); tick();
 
@@ -60,6 +64,7 @@
               '<div class="rot">SENHA</div>' +
               '<div class="senha">' + d.atual.senha + '</div>' +
               (d.atual.nome ? '<div class="nome">' + d.atual.nome + '</div>' : '') +
+              (d.atual.medico ? '<div class="medico">' + d.atual.medico + '</div>' : '') +
               '<div class="destino">➜ ' + d.atual.destino + '</div>' +
             '</div>';
           if (chave !== ultimaSenha) {

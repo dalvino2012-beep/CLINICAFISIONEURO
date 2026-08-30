@@ -30,7 +30,11 @@
     }
     .folha::before {
       content: ""; position: absolute; top: 0; bottom: 0;
-      left: 0; width: 8mm; background: #0B5FA5;
+      left: 0; width: 8mm;
+      background-color: #fff;
+      background-image:
+        repeating-linear-gradient(45deg, transparent 0 4mm, #555 4mm 4.25mm, transparent 4.25mm 8mm),
+        repeating-linear-gradient(-45deg, transparent 0 4mm, #555 4mm 4.25mm, transparent 4.25mm 8mm);
     }
     .via-label {
       position: absolute; top: 1rem; right: 1.4rem; background: #0B5FA5; color: #fff;
@@ -101,22 +105,30 @@
 
   {%- set msg -%}
 *{{ clinica_nome }}*
-{{ titulo }}
+*{{ titulo }}*
 
 Paciente: {{ r.paciente_nome }}
-Data: {{ r.data }}
-{% if r.medicamentos %}
+Data: {{ r.data|data_br }}
+{%- if r.medico_nome %}
+Médico: {{ r.medico_nome }} (CRM {{ r.medico_crm }})
+{%- endif %}
+{%- if r.medicamentos %}
+
 Medicamentos:
 {{ r.medicamentos }}
-{% endif %}{% if r.exames %}
+{%- endif %}
+{%- if r.exames %}
+
 Exames solicitados:
 {{ r.exames }}
-{% endif %}{% if r.instrucoes %}
+{%- endif %}
+{%- if r.instrucoes %}
+
 Orientações:
 {{ r.instrucoes }}
-{% endif %}{% if r.medico_nome %}
-Médico: {{ r.medico_nome }} (CRM {{ r.medico_crm }})
-{% endif %}
+{%- endif %}
+
+📄 Este é um resumo. O documento oficial completo (com QR code de verificação) está em PDF — baixe pelo botão "Salvar/Imprimir PDF" e anexe aqui.
   {%- endset -%}
 
   {% macro via(rotulo) %}
@@ -150,7 +162,7 @@ Médico: {{ r.medico_nome }} (CRM {{ r.medico_crm }})
       {% if r.instrucoes %}<pre>{{ r.instrucoes }}</pre>{% endif %}
     </div>
     <div class="ctrl-assin">
-      <div class="ctrl-data">DATA: {{ r.data }}</div>
+      <div class="ctrl-data">DATA: {{ r.data|data_br }}</div>
       <div class="ctrl-medico">
         {% if r.medico_nome %}{{ r.medico_nome }} — CRM {{ r.medico_crm }}{% if r.medico_especialidade %} — {{ r.medico_especialidade }}{% endif %}{% endif %}
         <div class="ctrl-linha-assin"></div>
@@ -186,8 +198,8 @@ Médico: {{ r.medico_nome }} (CRM {{ r.medico_crm }})
 
     <div class="paciente-box">
       <div><strong>Paciente:</strong> {{ r.paciente_nome }}</div>
-      <div><strong>CPF:</strong> {{ r.paciente_cpf }}{% if r.paciente_nasc %} &nbsp;|&nbsp; <strong>Nascimento:</strong> {{ r.paciente_nasc }}{% endif %}</div>
-      <div><strong>Data:</strong> {{ r.data }}</div>
+      <div><strong>CPF:</strong> {{ r.paciente_cpf }}{% if r.paciente_nasc %} &nbsp;|&nbsp; <strong>Nascimento:</strong> {{ r.paciente_nasc|data_br }}{% endif %}</div>
+      <div><strong>Data:</strong> {{ r.data|data_br }}</div>
     </div>
 
     {% if r.medicamentos %}
@@ -219,7 +231,9 @@ Médico: {{ r.medico_nome }} (CRM {{ r.medico_crm }})
     <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR</button>
     <a class="btn-pdf" href="{{ url_for('receita_pdf', receita_id=r.id) }}" target="_blank">⬇️ Salvar/Imprimir PDF</a>
     <a class="btn-zap" href="https://wa.me/{{ zap }}?text={{ msg | urlencode }}" target="_blank">WhatsApp</a>
-    <a class="btn-mail" href="mailto:?subject={{ ('Documento médico - ' ~ r.paciente_nome) | urlencode }}&body={{ msg | urlencode }}">E-mail</a>
+    <a class="btn-mail"
+       href="https://mail.google.com/mail/?view=cm&fs=1&to={{ r.paciente_email or '' }}&su={{ ('Documento médico - ' ~ r.paciente_nome) | urlencode }}&body={{ msg | urlencode }}"
+       target="_blank">E-mail (Gmail)</a>
     <a class="btn-back" href="{{ url_for('pacientes_editar', paciente_id=r.paciente_id) }}">Voltar</a>
   </div>
 

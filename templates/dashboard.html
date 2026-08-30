@@ -1,33 +1,66 @@
 {% extends "base.html" %}
 {% block title %}Painel{% endblock %}
 {% block content %}
-<h1>Painel do dia — {{ hoje }}</h1>
+{% set eh_hoje = (data_sel == hoje) %}
+{% set eh_medico = (g.user.perfil == 'medico') %}
+<h1>Painel do dia — {{ hoje|data_br }}</h1>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <label for="data" style="margin:0; font-weight:600; color:var(--primary-dark);">🔎 Consultar outra data:</label>
+    <input type="date" id="data" name="data" value="{{ data_sel }}" min="{{ data_min }}" max="{{ data_max }}"
+           onchange="this.form.submit()"
+           style="padding:0.6rem 0.8rem; font-size:1.1rem; border:1px solid var(--border); border-radius:6px;">
+    {% if not eh_hoje %}
+    <a class="btn btn-small btn-secondary" href="{{ url_for('dashboard') }}">Voltar para hoje</a>
+    {% endif %}
+    <span class="muted">(até 5 dias atrás e 30 dias à frente)</span>
+  </form>
+</div>
+
 <div class="grid-stats">
   <div class="stat"><div class="num">{{ total_pacientes }}</div><div class="label">Pacientes cadastrados</div></div>
   <div class="stat"><div class="num">{{ total_medicos }}</div><div class="label">Médicos ativos</div></div>
-  <div class="stat"><div class="num">{{ consultas_hoje }}</div><div class="label">Consultas hoje</div></div>
+  <div class="stat"><div class="num">{{ consultas_hoje }}</div>
+    <div class="label">
+      {% if eh_medico %}{{ 'Meus atendimentos hoje' if eh_hoje else 'Meus atendimentos em ' + (data_sel|data_br) }}
+      {% else %}{{ 'Consultas hoje' if eh_hoje else 'Consultas em ' + (data_sel|data_br) }}{% endif %}
+    </div>
+  </div>
 </div>
 
 <div class="card">
-  <h2>Consultas de hoje</h2>
+  <h2>
+    {% if eh_medico %}{{ 'Meus atendimentos de hoje' if eh_hoje else 'Meus atendimentos de ' + (data_sel|data_br) }}
+    {% else %}{{ 'Consultas de hoje' if eh_hoje else 'Consultas de ' + (data_sel|data_br) }}{% endif %}
+  </h2>
   {% if proximas %}
   <table>
     <thead>
-      <tr><th>Hora</th><th>Paciente</th><th>Médico</th><th>Status</th></tr>
+      <tr><th>Hora</th><th>Remarcar</th><th>Paciente</th>{% if not eh_medico %}<th>Médico</th>{% endif %}<th>Status</th></tr>
     </thead>
     <tbody>
       {% for c in proximas %}
       <tr>
         <td>{{ c.hora }}</td>
+        <td>
+          <form method="post" action="{{ url_for('agenda_remarcar', consulta_id=c.id) }}"
+                style="display:flex; gap:0.3rem; margin:0;">
+            <input type="text" name="nova_data" value="{{ c.data|data_br }}" placeholder="DD/MM/AAAA"
+                   inputmode="numeric" maxlength="10" class="campo-remarcar"
+                   style="width:110px; padding:0.35rem; font-size:0.85rem; border:1px solid var(--border); border-radius:6px;">
+            <button type="submit" class="btn btn-small" title="Remarcar para a nova data">↻</button>
+          </form>
+        </td>
         <td>{{ c.paciente_nome }}</td>
-        <td>{{ c.medico_nome }}</td>
+        {% if not eh_medico %}<td>{{ c.medico_nome }}</td>{% endif %}
         <td><span class="badge badge-{{ c.status }}">{{ c.status }}</span></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
   {% else %}
-  <p class="muted">Nenhuma consulta agendada para hoje.</p>
+  <p class="muted">Nenhum{{ 'a consulta' if not eh_medico else ' atendimento seu' }} agendado{{ 'a' if not eh_medico else '' }} para {{ 'hoje' if eh_hoje else 'esse dia' }}.</p>
   {% endif %}
 </div>
 
@@ -43,4 +76,15 @@
   </form>
   {% endif %}
 </div>
+
+<script>
+  document.querySelectorAll('.campo-remarcar').forEach(function (input) {
+    input.addEventListener('input', function () {
+      var v = this.value.replace(/\D/g, '').slice(0, 8);
+      v = v.replace(/^(\d{2})(\d)/, '$1/$2');
+      v = v.replace(/^(\d{2})\/(\d{2})(\d)/, '$1/$2/$3');
+      this.value = v;
+    });
+  });
+</script>
 {% endblock %}

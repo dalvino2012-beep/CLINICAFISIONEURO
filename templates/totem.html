@@ -36,11 +36,20 @@
   <div class="card">
     <form method="post" action="{{ url_for('totem_senha') }}">
       <label for="cpf">Digite seu CPF (opcional)</label>
-      <input type="text" id="cpf" name="cpf" inputmode="numeric" placeholder="000.000.000-00" autofocus>
+      <input type="text" id="cpf" name="cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" autofocus>
       <div class="hint">Informar o CPF agiliza seu atendimento. Se preferir, apenas toque em um botão abaixo.</div>
       <button class="btn-normal" type="submit" name="prioridade" value="0">🎟️ SENHA NORMAL</button>
       <button class="btn-prio" type="submit" name="prioridade" value="1">♿ PRIORITÁRIA (idoso, gestante, PcD)</button>
     </form>
   </div>
+  <script>
+    document.getElementById('cpf').addEventListener('input', function () {
+      var v = this.value.replace(/\D/g, '').slice(0, 11);
+      v = v.replace(/^(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3');
+      v = v.replace(/\.(\d{3})(\d)/, '.$1-$2');
+      this.value = v;
+    });
+  </script>
 </body>
 </html>

@@ -29,7 +29,10 @@ CREATE TABLE IF NOT EXISTS pacientes (
     cpf TEXT NOT NULL UNIQUE,
     data_nascimento TEXT,
     telefone TEXT,
+    whatsapp INTEGER NOT NULL DEFAULT 0,
+    email TEXT,
     endereco TEXT,
+    cep TEXT,
     historico TEXT,
     observacoes TEXT,
     criado_em TEXT NOT NULL DEFAULT (datetime('now'))
@@ -84,6 +87,14 @@ CREATE TABLE IF NOT EXISTS receitas (
     instrucoes TEXT,
     data TEXT NOT NULL,
     criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS ponto (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+    tipo TEXT NOT NULL CHECK(tipo IN ('entrada','saida_almoco','retorno_almoco','saida')),
+    data TEXT NOT NULL,
+    criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS consultas (

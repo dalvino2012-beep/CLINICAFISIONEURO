@@ -65,6 +65,9 @@ def init_db():
     add_col("usuarios", "medico_id", "INTEGER")
     add_col("consultas", "tipo_atendimento", "TEXT DEFAULT 'particular'")
     add_col("consultas", "convenio", "TEXT")
+    add_col("pacientes", "whatsapp", "INTEGER DEFAULT 0")
+    add_col("pacientes", "cep", "TEXT")
+    add_col("pacientes", "email", "TEXT")
     conn.commit()
 
     if is_new:

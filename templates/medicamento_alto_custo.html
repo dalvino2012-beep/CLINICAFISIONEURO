@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Medicamento de alto custo{% endblock %}
+{% block content %}
+<div class="lme-header">
+  <div><strong>SUS</strong><br><small>Ministerio da Saude</small></div>
+  <div><strong>COMPONENTE ESPECIALIZADO DA ASSISTENCIA FARMACEUTICA</strong><br>
+    <span>LAUDO DE SOLICITACAO, AVALIACAO E AUTORIZACAO DE MEDICAMENTO(S)</span>
+  </div>
+</div>
+<div class="actions lme-actions">
+  <h1>Medicamento de alto custo</h1>
+  <button type="button" class="btn" onclick="window.print()">Imprimir formulario</button>
+</div>
+<p class="muted">Preenchimento manual, independente dos pacientes cadastrados.</p>
+
+<form class="card compacto lme-form" onsubmit="return false;">
+  <h2>Solicitacao de medicamento(s)</h2>
+  <div class="form-row">
+    <div class="form-group"><label>1. Numero do CNES *</label><input name="cnes"></div>
+    <div class="form-group"><label>2. Nome do estabelecimento de saude solicitante *</label><input name="estabelecimento"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>3. Nome completo do paciente *</label><input name="paciente"></div>
+    <div class="form-group"><label>Peso do paciente (kg)</label><input name="peso" type="number" step="0.01"></div>
+    <div class="form-group"><label>Altura do paciente (cm)</label><input name="altura" type="number" step="0.1"></div>
+  </div>
+  <div class="form-group"><label>4. Nome da mae do paciente *</label><input name="mae"></div>
+
+  <h3>Medicamento(s) e quantidade solicitada *</h3>
+  <div class="lme-table-wrap"><table class="lme-table">
+    <thead><tr><th>#</th><th>Medicamento(s)</th><th>1o mes</th><th>2o mes</th><th>3o mes</th><th>4o mes</th><th>5o mes</th><th>6o mes</th></tr></thead>
+    <tbody>{% for i in range(1, 7) %}
+      <tr><td>{{ i }}</td><td><input name="medicamento_{{ i }}"></td>{% for mes in range(1, 7) %}<td><input name="qtd_{{ i }}_{{ mes }}" type="number" min="0"></td>{% endfor %}</tr>
+    {% endfor %}</tbody>
+  </table></div>
+
+  <div class="form-row"><div class="form-group"><label>9. CID-10 *</label><input name="cid"></div><div class="form-group" style="flex:3"><label>10. Diagnostico *</label><input name="diagnostico"></div></div>
+  <div class="form-group"><label>11. Anamnese *</label><textarea name="anamnese" rows="4"></textarea></div>
+  <div class="form-group"><label>12. Paciente realizou tratamento previo ou esta em tratamento da doenca? *</label><div class="lme-checks"><label><input type="checkbox" name="tratamento_nao"> Nao</label><label><input type="checkbox" name="tratamento_sim"> Sim. Relatar:</label></div><textarea name="tratamento_relato" rows="3"></textarea></div>
+  <div class="form-group"><label>13. Atestado de capacidade *</label><div class="lme-checks"><label><input type="checkbox" name="capacidade_nao"> Nao</label><label><input type="checkbox" name="capacidade_sim"> Sim</label></div><input name="responsavel_incapaz" placeholder="Nome do responsavel, se aplicavel"></div>
+
+  <div class="form-row"><div class="form-group"><label>14. Nome do medico solicitante *</label><input name="medico"></div><div class="form-group"><label>15. CNS do medico solicitante *</label><input name="cns_medico"></div><div class="form-group"><label>16. Data da solicitacao *</label><input name="data" type="date"></div></div>
+  <div class="form-group"><label>17. Assinatura e carimbo do medico</label><textarea name="assinatura_medico" rows="2"></textarea></div>
+
+  <h3>18. Campos preenchidos por</h3>
+  <div class="lme-checks"><label><input type="checkbox" name="por_paciente"> Paciente</label><label><input type="checkbox" name="por_mae"> Mae do paciente</label><label><input type="checkbox" name="por_responsavel"> Responsavel</label><label><input type="checkbox" name="por_medico"> Medico solicitante</label><label><input type="checkbox" name="por_outro"> Outro</label><input name="outro_nome" placeholder="Nome"></div>
+  <div class="form-row"><div class="form-group"><label>19. Raca/cor/etnia informado pelo paciente ou responsavel</label><input name="raca_cor"></div><div class="form-group"><label>20. Telefone(s) para contato do paciente</label><input name="telefone"></div></div>
+  <div class="form-row"><div class="form-group"><label>21. Numero do documento do paciente (CPF ou CNS)</label><input name="documento"></div><div class="form-group"><label>22. Correio eletronico do paciente</label><input name="email" type="email"></div></div>
+  <div class="form-group"><label>23. Assinatura do responsavel pelo preenchimento</label><textarea name="assinatura_responsavel" rows="2"></textarea></div>
+</form>
+{% endblock %}

@@ -7,19 +7,24 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>{% block title %}FISIONEURO{% endblock %} - Clínica</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20260717b">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20260820a">
 </head>
 <body>
   {% if g.user %}
+  {% set p = request.path %}
+  {% set relogio_modo = 'data' if (p.startswith('/agenda') or p.startswith('/balcao') or p.startswith('/atendimento') or p.startswith('/usuarios')) else 'hora-frente' %}
   <div class="topbar">
     <div class="brand-row">
+      <div class="brand-hora" id="brand-hora" data-modo="{{ relogio_modo }}"></div>
       <img class="brand-logo" src="{{ url_for('static', filename='img/logo_fisioneuro_azul.png') }}" alt="FISIONEURO Clínica Médica">
       <a class="brand-sair" href="{{ url_for('logout') }}">Sair</a>
     </div>
-    {% set p = request.path %}
     <nav class="nav-row">
       <a class="{{ 'active' if p == '/' }}" href="{{ url_for('dashboard') }}">Painel</a>
-      <a class="{{ 'active' if p.startswith('/pacientes') }}" href="{{ url_for('pacientes_lista') }}">Pacientes</a>
+      {% if g.user.perfil in ('admin', 'medico') %}
+      <a class="{{ 'active' if p == '/pacientes-total' }}" href="{{ url_for('pacientes_total') }}">Pacientes Total</a>
+      {% endif %}
+      <a class="{{ 'active' if p.startswith('/pacientes') and p != '/pacientes-total' }}" href="{{ url_for('pacientes_lista') }}">Pacientes</a>
       {% if g.user.perfil == 'medico' %}
       <a class="{{ 'active' if p.startswith('/minha-fila') }}" href="{{ url_for('minha_fila') }}">Minha fila</a>
       {% endif %}
@@ -29,9 +34,25 @@
       <a href="{{ url_for('telao') }}" target="_blank">Telão</a>
       {% if g.user.perfil == 'admin' %}
       <a class="{{ 'active' if p.startswith('/usuarios') }}" href="{{ url_for('usuarios_lista') }}">Usuários</a>
+      <a class="{{ 'active' if p.startswith('/ponto') }}" href="{{ url_for('ponto_lista') }}">Ponto</a>
       {% endif %}
+      <a class="nav-medicamento {{ 'active' if p.startswith('/medicamento-alto-custo') }}" href="{{ url_for('medicamento_alto_custo') }}"><span>Medicamento</span><span>Alto custo</span></a>
       <a class="{{ 'active' if p.startswith('/alterar-senha') }}" href="{{ url_for('alterar_senha') }}">Olá, {{ g.user.nome }}</a>
     </nav>
+    <div class="ponto-bar">
+      {% if g.ponto_proximo %}
+      <form method="post" action="{{ url_for('ponto_bater') }}" style="margin:0;">
+        <button type="submit" class="btn btn-small">🕒 Bater ponto: {{ ponto_labels[g.ponto_proximo] }}</button>
+      </form>
+      {% else %}
+      <span class="muted">🕒 Ponto do dia completo</span>
+      {% endif %}
+      {% for tipo in ['entrada','saida_almoco','retorno_almoco','saida'] %}
+      {% if tipo in g.ponto_feitos %}
+      <span class="ponto-marcado">{{ ponto_labels[tipo] }}: {{ g.ponto_feitos[tipo][11:16] }}</span>
+      {% endif %}
+      {% endfor %}
+    </div>
   </div>
   {% endif %}
   <div class="container">
@@ -46,5 +67,29 @@
     <div><strong>Central de Atendimento:</strong> (11) 4412-2723 / 4412-2805</div>
     <div>Alameda Lindóia, 99 - Jardim do Lago - CEP: 12947-280 - Atibaia - SP</div>
   </footer>
+  <script>
+    function atualizarRelogioTopo() {
+      var el = document.getElementById('brand-hora');
+      if (!el) return;
+      var dias = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+      var agora = new Date();
+      var dia = dias[agora.getDay()];
+      dia = dia.charAt(0).toUpperCase() + dia.slice(1);
+      var dd = String(agora.getDate()).padStart(2, '0');
+      var mm = String(agora.getMonth() + 1).padStart(2, '0');
+      var yyyy = agora.getFullYear();
+      var hh = String(agora.getHours()).padStart(2, '0');
+      var mi = String(agora.getMinutes()).padStart(2, '0');
+      var ss = String(agora.getSeconds()).padStart(2, '0');
+      var modo = el.getAttribute('data-modo');
+      if (modo === 'data') {
+        el.innerHTML = dia + '<br>' + dd + '/' + mm + '/' + yyyy;
+      } else {
+        el.innerHTML = hh + ':' + mi + ':' + ss + '<br>' + dia + ' - ' + dd + '/' + mm + '/' + yyyy;
+      }
+    }
+    setInterval(atualizarRelogioTopo, 1000);
+    atualizarRelogioTopo();
+  </script>
 </body>
 </html>

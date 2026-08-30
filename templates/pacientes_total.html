@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Pacientes Total{% endblock %}
+{% block content %}
+<h1>Pacientes Total</h1>
+<p class="muted" style="margin-top:-0.6rem;">Lista completa de pacientes cadastrados, com a data da última consulta de cada um.</p>
+
+<div class="card">
+  <div class="actions" style="margin-bottom:0.8rem;">
+    <input type="text" id="busca" onkeyup="filtrarPacTotal()" placeholder="Filtrar por nome ou CPF"
+           style="padding:0.5rem; border:1px solid var(--border); border-radius:6px; min-width:260px;">
+  </div>
+  {% if pacientes %}
+  <div style="overflow-x:auto;">
+  <table id="tab-pac-total" class="tabela-compacta">
+    <thead>
+      <tr><th class="nowrap">Nome</th><th></th><th class="nowrap">CPF</th><th class="nowrap">Telefone</th><th class="nowrap">Última consulta</th><th class="nowrap">Atendimento</th></tr>
+    </thead>
+    <tbody>
+      {% for p in pacientes %}
+      <tr>
+        <td class="nowrap" title="{{ p.nome }}">{{ (p.nome[:20] + '…') if p.nome|length > 20 else p.nome }}</td>
+        <td class="nowrap"><a class="btn btn-small" href="{{ url_for('pacientes_editar', paciente_id=p.id) }}">Abrir ficha</a></td>
+        <td class="nowrap">{{ p.cpf }}</td>
+        <td class="nowrap">{% if p.telefone and p.whatsapp %}<span style="color:var(--success); font-weight:700;" title="Tem WhatsApp">(W)</span> {% endif %}{{ p.telefone or '-' }}</td>
+        <td class="nowrap">{{ p.ultima_consulta|data_br if p.ultima_consulta else 'Nunca teve consulta' }}</td>
+        <td class="nowrap">
+          {% if p.ultimo_tipo_atendimento == 'convenio' %}Convênio{% if p.ultimo_convenio %} ({{ p.ultimo_convenio }}){% endif %}
+          {% elif p.ultimo_tipo_atendimento == 'particular' %}Particular
+          {% else %}-{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Nenhum paciente cadastrado ainda.</p>
+  {% endif %}
+</div>
+
+<script>
+  function filtrarPacTotal() {
+    var t = document.getElementById('busca').value.toLowerCase();
+    document.querySelectorAll('#tab-pac-total tbody tr').forEach(function (tr) {
+      tr.style.display = tr.innerText.toLowerCase().indexOf(t) > -1 ? '' : 'none';
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Ponto{% endblock %}
+{% block content %}
+<h1>Registro de ponto</h1>
+<div class="card">
+  <form method="get" style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
+    <label for="data" style="margin:0;">Data:</label>
+    <input type="date" id="data" name="data" value="{{ data_sel }}" onchange="this.form.submit()">
+  </form>
+  <table>
+    <thead>
+      <tr><th>Nome</th><th>Entrada</th><th>Saída (almoço)</th><th>Retorno (almoço)</th><th>Saída</th></tr>
+    </thead>
+    <tbody>
+      {% for l in linhas %}
+      <tr>
+        <td>{{ l.nome }}</td>
+        <td>{{ l.pontos.entrada[11:16] if l.pontos.entrada else '-' }}</td>
+        <td>{{ l.pontos.saida_almoco[11:16] if l.pontos.saida_almoco else '-' }}</td>
+        <td>{{ l.pontos.retorno_almoco[11:16] if l.pontos.retorno_almoco else '-' }}</td>
+        <td>{{ l.pontos.saida[11:16] if l.pontos.saida else '-' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">Nenhum usuário ativo.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

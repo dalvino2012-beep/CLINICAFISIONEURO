@@ -5,10 +5,18 @@
 <p class="muted" style="margin-top:0;">{{ med.nome }}{% if med.especialidade %} — {{ med.especialidade }}{% endif %}</p>
 
 <div class="card" style="background:#eaf3f0; border-color:#bcd; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
-  <label style="font-weight:600; color:var(--primary-dark); margin:0; display:flex; align-items:center; gap:0.4rem;">
+  <label for="sala_atual" style="font-weight:600; color:var(--primary-dark); margin:0; display:flex; align-items:center; gap:0.4rem;">
     🚪 Sala onde você está agora:
-    <input type="text" id="sala_atual" value="{{ minha_sala }}" placeholder="ex.: 3"
-           style="width:110px; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-size:1.05rem;">
+    <select id="sala_atual"
+            style="width:180px; padding:0.6rem; border:1px solid var(--border); border-radius:6px; font-size:1.05rem;">
+      <option value="" {{ 'selected' if not minha_sala }}>— escolha a sala —</option>
+      {% for i in range(1, 10) %}
+      <option value="{{ '%02d' % i }}" {{ 'selected' if minha_sala == '%02d' % i }}>Sala {{ '%02d' % i }}</option>
+      {% endfor %}
+      {% for i in range(1, 4) %}
+      <option value="Fisioterapia {{ i }}" {{ 'selected' if minha_sala == 'Fisioterapia ' ~ i }}>Fisioterapia {{ i }}</option>
+      {% endfor %}
+    </select>
   </label>
   <form method="post" action="{{ url_for('minha_fila_chamar_proximo') }}" onsubmit="return injSala(this)" style="margin:0;">
     <input type="hidden" name="sala">
@@ -47,13 +55,14 @@
 <div class="card">
   <h2>Chamados / em atendimento</h2>
   <table>
-    <thead><tr><th>Senha</th><th>Paciente</th><th>Sala</th><th></th></tr></thead>
+    <thead><tr><th>Senha</th><th class="nowrap">Horário</th><th style="padding-left:1.4rem;">Sala</th><th>Paciente</th><th></th></tr></thead>
     <tbody>
       {% for s in chamados %}
       <tr>
         <td><strong>{{ s | senha }}</strong></td>
+        <td class="nowrap">{{ s.chamado_em[11:16] if s.chamado_em else '-' }}</td>
+        <td style="padding-left:1.4rem;">{{ s.sala or '-' }}</td>
         <td>{{ s.paciente_nome or '-' }}</td>
-        <td>{{ s.sala or '-' }}</td>
         <td class="text-right">
           <a class="btn btn-small" style="background:#0B5FA5;" href="{{ url_for('atendimento_medico', senha_id=s.id) }}">🩺 Atender</a>
           <form method="post" action="{{ url_for('minha_fila_finalizar', senha_id=s.id) }}" style="display:inline">

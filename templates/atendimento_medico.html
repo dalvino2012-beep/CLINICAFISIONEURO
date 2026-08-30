@@ -49,7 +49,7 @@
     <tbody>
       {% for r in receitas %}
       <tr>
-        <td>{{ r.data }}</td>
+        <td>{{ r.data|data_br }}</td>
         <td>{{ {'receita':'Receita','exame':'Exames','ambos':'Receita + Exames','controlada':'Controlada (2 vias)'}.get(r.tipo, r.tipo) }}</td>
         <td>{{ r.medico_nome or '-' }}</td>
         <td class="text-right"><a class="btn btn-small" href="{{ url_for('receita_ver', receita_id=r.id) }}">Abrir / Imprimir</a></td>
