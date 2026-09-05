@@ -2130,7 +2130,7 @@ def contas_receber():
     db = get_db()
     sql = """SELECT c.*, u.nome AS usuario_nome FROM contas_receber c
              LEFT JOIN usuarios u ON u.id = c.usuario_id
-             WHERE c.data BETWEEN ? AND ?"""
+             WHERE c.lancado_em IS NULL AND c.data BETWEEN ? AND ?"""
     params = [inicio, fim]
     if convenio_filtro:
         sql += " AND c.convenio LIKE ?"
@@ -2190,21 +2190,26 @@ def contas_receber_lancar(conta_id):
         db.close()
         flash("Este lançamento já havia sido enviado ao caixa.", "error")
         return redirect(url_for("contas_receber"))
+    data_recebimento = request.form.get("data_recebimento", "").strip()
+    if not data_recebimento:
+        db.close()
+        flash("Informe a data do recebimento para lançar no caixa.", "error")
+        return redirect(url_for("contas_receber"))
     descricao = f"Convênio {conta['convenio']}"
     if conta["autorizacao"]:
         descricao += f" (aut. {conta['autorizacao']})"
     db.execute(
         """INSERT INTO caixa_entradas (data, descricao, valor, forma_pagamento, usuario_id)
            VALUES (?, ?, ?, ?, ?)""",
-        (date.today().isoformat(), descricao, conta["valor"], "Convênio", g.user["id"]),
+        (data_recebimento, descricao, conta["valor"], "Convênio", g.user["id"]),
     )
     db.execute(
-        "UPDATE contas_receber SET lancado_em = datetime('now','localtime') WHERE id = ?",
-        (conta_id,),
+        "UPDATE contas_receber SET data_recebimento = ?, lancado_em = datetime('now','localtime') WHERE id = ?",
+        (data_recebimento, conta_id),
     )
     db.commit()
     db.close()
-    flash("Recebimento lançado no Caixa.", "success")
+    flash("Recebimento lançado no Caixa e baixado de Contas a Receber.", "success")
     return redirect(url_for("contas_receber"))
 
 

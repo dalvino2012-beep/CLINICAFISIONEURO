@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS contas_receber (
     autorizacao TEXT,
     data_vencimento TEXT,
     valor REAL NOT NULL,
+    data_recebimento TEXT,
     lancado_em TEXT,
     usuario_id INTEGER REFERENCES usuarios(id),
     criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
