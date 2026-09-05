@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Novo Lançamento - Contas a Receber{% endblock %}
+{% block content %}
+<h1>Novo lançamento (Contas a Receber)</h1>
+<div class="card">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="convenio">Nome convênio</label>
+        <input type="text" id="convenio" name="convenio" placeholder="Ex.: Unimed, Bradesco Saúde" required>
+      </div>
+      <div class="form-group">
+        <label for="data">Data</label>
+        <input type="date" id="data" name="data" value="{{ hoje }}" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="autorizacao">Nº Autorização</label>
+        <input type="text" id="autorizacao" name="autorizacao">
+      </div>
+      <div class="form-group">
+        <label for="data_vencimento">Data de vencimento</label>
+        <input type="date" id="data_vencimento" name="data_vencimento">
+      </div>
+      <div class="form-group">
+        <label for="valor">Valor (R$)</label>
+        <input type="text" id="valor" name="valor" inputmode="decimal" placeholder="Ex.: 150,00" required>
+      </div>
+    </div>
+    <button type="submit" class="btn">Salvar</button>
+    <a class="btn btn-secondary" href="{{ url_for('contas_receber') }}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

@@ -2116,6 +2116,178 @@ def caixa_saida_excluir(saida_id):
     return redirect(url_for("caixa"))
 
 
+# ---------- Contas a Receber (convênios) ----------
+
+@app.route("/contas-receber")
+@caixa_required
+def contas_receber():
+    hoje = date.today()
+    inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
+    fim = request.args.get("fim", "").strip() or hoje.isoformat()
+    if fim < inicio:
+        inicio, fim = fim, inicio
+    convenio_filtro = request.args.get("convenio", "").strip()
+    db = get_db()
+    sql = """SELECT c.*, u.nome AS usuario_nome FROM contas_receber c
+             LEFT JOIN usuarios u ON u.id = c.usuario_id
+             WHERE c.data BETWEEN ? AND ?"""
+    params = [inicio, fim]
+    if convenio_filtro:
+        sql += " AND c.convenio LIKE ?"
+        params.append(f"%{convenio_filtro}%")
+    sql += " ORDER BY c.data_vencimento IS NULL, c.data_vencimento, c.data"
+    lancamentos = db.execute(sql, params).fetchall()
+    db.close()
+    total = sum(l["valor"] for l in lancamentos)
+    return render_template(
+        "contas_receber.html", lancamentos=lancamentos, total=total,
+        inicio=inicio, fim=fim, convenio_filtro=convenio_filtro,
+    )
+
+
+@app.route("/contas-receber/nova", methods=["GET", "POST"])
+@caixa_required
+def contas_receber_nova():
+    if request.method == "POST":
+        convenio = request.form.get("convenio", "").strip()
+        data_ = request.form.get("data", "").strip() or date.today().isoformat()
+        autorizacao = request.form.get("autorizacao", "").strip()
+        data_vencimento = request.form.get("data_vencimento", "").strip()
+        valor = request.form.get("valor", "").replace(",", ".").strip()
+        if not convenio or not valor:
+            flash("Preencha o nome do convênio e o valor.", "error")
+        else:
+            try:
+                valor = float(valor)
+            except ValueError:
+                valor = None
+            if valor is None:
+                flash("Valor inválido.", "error")
+            else:
+                db = get_db()
+                db.execute(
+                    """INSERT INTO contas_receber (convenio, data, autorizacao, data_vencimento, valor, usuario_id)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (convenio, data_, autorizacao, data_vencimento, valor, g.user["id"]),
+                )
+                db.commit()
+                db.close()
+                flash("Lançamento de contas a receber registrado.", "success")
+                return redirect(url_for("contas_receber"))
+    return render_template("contas_receber_form.html", hoje=date.today().isoformat())
+
+
+@app.route("/contas-receber/<int:conta_id>/lancar-caixa", methods=["POST"])
+@caixa_required
+def contas_receber_lancar(conta_id):
+    db = get_db()
+    conta = db.execute("SELECT * FROM contas_receber WHERE id = ?", (conta_id,)).fetchone()
+    if conta is None:
+        db.close()
+        flash("Lançamento não encontrado.", "error")
+        return redirect(url_for("contas_receber"))
+    if conta["lancado_em"]:
+        db.close()
+        flash("Este lançamento já havia sido enviado ao caixa.", "error")
+        return redirect(url_for("contas_receber"))
+    descricao = f"Convênio {conta['convenio']}"
+    if conta["autorizacao"]:
+        descricao += f" (aut. {conta['autorizacao']})"
+    db.execute(
+        """INSERT INTO caixa_entradas (data, descricao, valor, forma_pagamento, usuario_id)
+           VALUES (?, ?, ?, ?, ?)""",
+        (date.today().isoformat(), descricao, conta["valor"], "Convênio", g.user["id"]),
+    )
+    db.execute(
+        "UPDATE contas_receber SET lancado_em = datetime('now','localtime') WHERE id = ?",
+        (conta_id,),
+    )
+    db.commit()
+    db.close()
+    flash("Recebimento lançado no Caixa.", "success")
+    return redirect(url_for("contas_receber"))
+
+
+@app.route("/contas-receber/<int:conta_id>/excluir", methods=["POST"])
+@admin_required
+def contas_receber_excluir(conta_id):
+    db = get_db()
+    db.execute("DELETE FROM contas_receber WHERE id = ?", (conta_id,))
+    db.commit()
+    db.close()
+    flash("Lançamento excluído.", "success")
+    return redirect(url_for("contas_receber"))
+
+
+# ---------- Contas a Pagar ----------
+
+@app.route("/contas-pagar")
+@caixa_required
+def contas_pagar():
+    hoje = date.today()
+    inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
+    fim = request.args.get("fim", "").strip() or hoje.isoformat()
+    if fim < inicio:
+        inicio, fim = fim, inicio
+    db = get_db()
+    contas = db.execute(
+        """SELECT c.*, u.nome AS usuario_nome FROM contas_pagar c
+           LEFT JOIN usuarios u ON u.id = c.usuario_id
+           WHERE c.data BETWEEN ? AND ?
+           ORDER BY c.data, c.criado_em""",
+        (inicio, fim),
+    ).fetchall()
+    db.close()
+    total = sum(c["valor"] for c in contas)
+    return render_template("contas_pagar.html", contas=contas, total=total, inicio=inicio, fim=fim)
+
+
+@app.route("/contas-pagar/nova", methods=["GET", "POST"])
+@caixa_required
+def contas_pagar_nova():
+    if request.method == "POST":
+        data_ = request.form.get("data", "").strip() or date.today().isoformat()
+        descricao = request.form.get("descricao", "").strip()
+        categoria = request.form.get("categoria", "").strip()
+        valor = request.form.get("valor", "").replace(",", ".").strip()
+        forma_pagamento = request.form.get("forma_pagamento", "").strip()
+        if not descricao or not valor:
+            flash("Preencha a descrição e o valor.", "error")
+        else:
+            try:
+                valor = float(valor)
+            except ValueError:
+                valor = None
+            if valor is None:
+                flash("Valor inválido.", "error")
+            else:
+                db = get_db()
+                db.execute(
+                    """INSERT INTO contas_pagar (data, descricao, categoria, valor, forma_pagamento, usuario_id)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (data_, descricao, categoria, valor, forma_pagamento, g.user["id"]),
+                )
+                db.commit()
+                db.close()
+                flash("Conta a pagar registrada.", "success")
+                return redirect(url_for("contas_pagar"))
+    return render_template(
+        "contas_pagar_form.html", hoje=date.today().isoformat(),
+        formas_pagamento=FORMAS_PAGAMENTO_CAIXA,
+    )
+
+
+@app.route("/contas-pagar/<int:conta_id>/excluir", methods=["POST"])
+@admin_required
+def contas_pagar_excluir(conta_id):
+    db = get_db()
+    db.execute("DELETE FROM contas_pagar WHERE id = ?", (conta_id,))
+    db.commit()
+    db.close()
+    flash("Conta a pagar excluída.", "success")
+    return redirect(url_for("contas_pagar"))
+
+
 # ---------- Fluxo de Caixa: Relatórios ----------
 
 NOMES_MES_ABREV = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]

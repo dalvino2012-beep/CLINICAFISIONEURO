@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Contas a Pagar{% endblock %}
+{% block content %}
+<h1>Contas a Pagar</h1>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <label for="inicio" style="margin:0; font-weight:600; color:var(--primary-dark);">Período:</label>
+    <input type="date" id="inicio" name="inicio" value="{{ inicio }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <span>até</span>
+    <input type="date" id="fim" name="fim" value="{{ fim }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <button class="btn btn-small" type="submit">Filtrar</button>
+  </form>
+</div>
+
+<div class="grid-stats caixa-valores">
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(total) }}</div><div class="label">Total a pagar (período)</div></div>
+</div>
+
+<div class="actions caixa-acoes">
+  <a class="btn" href="{{ url_for('contas_pagar_nova') }}">+ Nova conta a pagar</a>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">Contas de {{ inicio|data_br }} até {{ fim|data_br }}</h2>
+  {% if contas %}
+  <div style="overflow-x:auto;">
+  <table>
+    <thead>
+      <tr><th class="nowrap">Data</th><th>Categoria</th><th>Descrição</th><th class="nowrap">Forma de pagamento</th><th class="text-right">Valor</th>{% if g.user.perfil == 'admin' %}<th></th>{% endif %}</tr>
+    </thead>
+    <tbody>
+      {% for c in contas %}
+      <tr>
+        <td class="nowrap">{{ c.data|data_br }}</td>
+        <td>{{ c.categoria or '-' }}</td>
+        <td>{{ c.descricao }}</td>
+        <td class="nowrap">{{ c.forma_pagamento or '-' }}</td>
+        <td class="text-right nowrap">R$ {{ '%.2f'|format(c.valor) }}</td>
+        {% if g.user.perfil == 'admin' %}
+        <td class="text-right nowrap">
+          <form method="post" action="{{ url_for('contas_pagar_excluir', conta_id=c.id) }}" style="display:inline"
+                onsubmit="return confirm('Excluir esta conta?');">
+            <button class="btn btn-small btn-secondary" type="submit">Excluir</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Nenhuma conta a pagar cadastrada nesse período.</p>
+  {% endif %}
+</div>
+{% endblock %}

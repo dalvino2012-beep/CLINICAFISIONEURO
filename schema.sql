@@ -130,3 +130,26 @@ CREATE TABLE IF NOT EXISTS caixa_saidas (
     usuario_id INTEGER REFERENCES usuarios(id),
     criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
+
+CREATE TABLE IF NOT EXISTS contas_receber (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    convenio TEXT NOT NULL,
+    data TEXT NOT NULL,
+    autorizacao TEXT,
+    data_vencimento TEXT,
+    valor REAL NOT NULL,
+    lancado_em TEXT,
+    usuario_id INTEGER REFERENCES usuarios(id),
+    criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS contas_pagar (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    data TEXT NOT NULL,
+    descricao TEXT NOT NULL,
+    categoria TEXT,
+    valor REAL NOT NULL,
+    forma_pagamento TEXT,
+    usuario_id INTEGER REFERENCES usuarios(id),
+    criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);

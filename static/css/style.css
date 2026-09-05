@@ -165,6 +165,34 @@ body {
   .lme-checks input[name="outro_cpf"] { width: 90px; }
   .lme-footnote { font-size: 0.625rem; margin: 0.2rem 0 0; }
 }
+.topbar .nav-row .nav-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+.topbar .nav-row .nav-dropdown-menu {
+  display: none;
+  flex-direction: column;
+  position: fixed;
+  background: #2f6ea3;
+  border-radius: 8px;
+  padding: 0.3rem;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+  z-index: 200;
+}
+.topbar .nav-row .nav-dropdown-menu a {
+  display: block;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+}
+.topbar .nav-row .nav-dropdown-menu a:hover {
+  background: rgba(255,255,255,0.18);
+  text-decoration: none;
+}
+.topbar .nav-row .nav-dropdown.aberto .nav-dropdown-menu {
+  display: flex;
+}
+
 .topbar .nav-row a.nav-medicamento {
   display: inline-flex;
   flex-direction: column;

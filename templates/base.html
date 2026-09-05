@@ -32,7 +32,15 @@
       <a class="{{ 'active' if p.startswith('/agenda') }}" href="{{ url_for('agenda_lista') }}">Agenda</a>
       <a class="{{ 'active' if p.startswith('/balcao') or p.startswith('/atendimento') }}" href="{{ url_for('balcao') }}">Balcão</a>
       {% if g.user.perfil in ('admin', 'recepcao') %}
-      <a class="{{ 'active' if p.startswith('/caixa') }}" href="{{ url_for('caixa') }}">Caixa</a>
+      <div class="nav-dropdown" id="nav-financeiro">
+        <a href="#" class="{{ 'active' if p.startswith('/caixa') or p.startswith('/contas-receber') or p.startswith('/contas-pagar') }}"
+           onclick="toggleNavDropdown(event, 'nav-financeiro')">Financeiro</a>
+        <div class="nav-dropdown-menu">
+          <a class="{{ 'active' if p.startswith('/caixa') }}" href="{{ url_for('caixa') }}">Caixa</a>
+          <a class="{{ 'active' if p.startswith('/contas-receber') }}" href="{{ url_for('contas_receber') }}">Contas a Receber</a>
+          <a class="{{ 'active' if p.startswith('/contas-pagar') }}" href="{{ url_for('contas_pagar') }}">Contas a Pagar</a>
+        </div>
+      </div>
       {% endif %}
       <a href="{{ url_for('telao') }}" target="_blank">Telão</a>
       {% if g.user.perfil == 'admin' %}
@@ -95,6 +103,26 @@
     }
     setInterval(atualizarRelogioTopo, 1000);
     atualizarRelogioTopo();
+
+    function toggleNavDropdown(ev, id) {
+      ev.preventDefault();
+      var el = document.getElementById(id);
+      var link = el.querySelector('a');
+      var menu = el.querySelector('.nav-dropdown-menu');
+      var estavaAberto = el.classList.contains('aberto');
+      document.querySelectorAll('.nav-dropdown.aberto').forEach(function (d) { d.classList.remove('aberto'); });
+      if (!estavaAberto) {
+        var rect = link.getBoundingClientRect();
+        menu.style.top = rect.bottom + 'px';
+        menu.style.left = rect.left + 'px';
+        el.classList.add('aberto');
+      }
+    }
+    document.addEventListener('click', function (ev) {
+      document.querySelectorAll('.nav-dropdown.aberto').forEach(function (d) {
+        if (!d.contains(ev.target)) d.classList.remove('aberto');
+      });
+    });
   </script>
 </body>
 </html>
