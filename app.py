@@ -133,13 +133,13 @@ def medico_required(view):
 
 
 def caixa_required(view):
-    """Apenas administrador e recepção (balcão) têm acesso ao fluxo de caixa."""
+    """Apenas administrador tem acesso ao fluxo de caixa."""
     @wraps(view)
     def wrapped(*args, **kwargs):
         if g.user is None:
             return redirect(url_for("login", next=request.path))
-        if g.user["perfil"] not in ("admin", "recepcao"):
-            flash("Acesso restrito ao administrador e à recepção.", "error")
+        if g.user["perfil"] != "admin":
+            flash("Acesso restrito ao administrador.", "error")
             return redirect(url_for("dashboard"))
         return view(*args, **kwargs)
     return wrapped
