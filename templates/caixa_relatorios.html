@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Relatórios do Caixa{% endblock %}
+{% block content %}
+<h1>Relatórios do Caixa</h1>
+<p class="muted">Escolha o relatório que quer ver ou gerar.</p>
+
+<div class="grid-stats">
+  <a class="card caixa-rel-card" href="{{ url_for('caixa_relatorio_fechamento') }}">
+    <div class="caixa-rel-icone">🧾</div>
+    <h2>Fechamento (dia/mês)</h2>
+    <p class="muted">Resumo fechado de um dia ou mês, pronto para gerar em PDF e imprimir ou arquivar.</p>
+  </a>
+  <a class="card caixa-rel-card" href="{{ url_for('caixa_relatorio_categoria') }}">
+    <div class="caixa-rel-icone">📊</div>
+    <h2>Resumo por categoria</h2>
+    <p class="muted">Entradas por forma de pagamento e saídas por categoria, para entender para onde vai o dinheiro.</p>
+  </a>
+  <a class="card caixa-rel-card" href="{{ url_for('caixa_relatorio_comparativo') }}">
+    <div class="caixa-rel-icone">📈</div>
+    <h2>Comparativo mensal</h2>
+    <p class="muted">Gráfico com a evolução de entradas, saídas e saldo mês a mês.</p>
+  </a>
+  <a class="card caixa-rel-card" href="{{ url_for('caixa') }}">
+    <div class="caixa-rel-icone">⬇️</div>
+    <h2>Exportar planilha (Excel)</h2>
+    <p class="muted">Vá até o Caixa, escolha o período e use o botão "Exportar para Excel" na lista de movimentações.</p>
+  </a>
+</div>
+
+<div class="actions">
+  <a class="btn btn-secondary" href="{{ url_for('caixa') }}">← Voltar ao Caixa</a>
+</div>
+{% endblock %}

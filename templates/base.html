@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>{% block title %}FISIONEURO{% endblock %} - Clínica</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20260820a">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20260831y">
 </head>
 <body>
   {% if g.user %}
@@ -31,6 +31,9 @@
       <a class="{{ 'active' if p.startswith('/medicos') }}" href="{{ url_for('medicos_lista') }}">Médicos</a>
       <a class="{{ 'active' if p.startswith('/agenda') }}" href="{{ url_for('agenda_lista') }}">Agenda</a>
       <a class="{{ 'active' if p.startswith('/balcao') or p.startswith('/atendimento') }}" href="{{ url_for('balcao') }}">Balcão</a>
+      {% if g.user.perfil in ('admin', 'recepcao') %}
+      <a class="{{ 'active' if p.startswith('/caixa') }}" href="{{ url_for('caixa') }}">Caixa</a>
+      {% endif %}
       <a href="{{ url_for('telao') }}" target="_blank">Telão</a>
       {% if g.user.perfil == 'admin' %}
       <a class="{{ 'active' if p.startswith('/usuarios') }}" href="{{ url_for('usuarios_lista') }}">Usuários</a>

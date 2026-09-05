@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Fechamento de Caixa{% endblock %}
+{% block content %}
+<h1>Fechamento de Caixa</h1>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <label style="margin:0; font-weight:600; color:var(--primary-dark);">
+      <input type="radio" name="tipo" value="dia" {{ 'checked' if tipo == 'dia' }} onchange="this.form.submit()"> Fechamento diário
+    </label>
+    <label style="margin:0; font-weight:600; color:var(--primary-dark);">
+      <input type="radio" name="tipo" value="mes" {{ 'checked' if tipo == 'mes' }} onchange="this.form.submit()"> Fechamento mensal
+    </label>
+    {% if tipo == 'mes' %}
+    <input type="month" name="mes" value="{{ data_sel }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    {% else %}
+    <input type="date" name="data" value="{{ data_sel }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    {% endif %}
+    <button class="btn btn-small" type="submit">Ver</button>
+  </form>
+</div>
+
+<div class="grid-stats caixa-valores">
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(total_entradas) }}</div><div class="label">Total de entradas</div></div>
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(total_saidas) }}</div><div class="label">Total de saídas</div></div>
+  <div class="stat"><div class="num" style="{{ 'color:#b42318;' if saldo < 0 else '' }}">R$ {{ '%.2f'|format(saldo) }}</div><div class="label">Saldo do período</div></div>
+</div>
+
+<div class="actions">
+  <a class="btn" href="{{ url_for('caixa_relatorio_fechamento_pdf', tipo=tipo, data=data_sel if tipo == 'dia' else none, mes=data_sel if tipo == 'mes' else none) }}" target="_blank">🧾 Gerar PDF</a>
+  <a class="btn btn-secondary" href="{{ url_for('caixa_relatorios') }}">← Voltar aos relatórios</a>
+</div>
+
+<div class="card">
+  <h2>Movimentações do período</h2>
+  {% if movimentos %}
+  <div style="overflow-x:auto;">
+  <table>
+    <thead>
+      <tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Descrição</th><th class="nowrap">Forma de pagamento</th><th class="text-right">Valor</th></tr>
+    </thead>
+    <tbody>
+      {% for m in movimentos %}
+      <tr>
+        <td class="nowrap">{{ m.data|data_br }}</td>
+        <td><span class="badge {{ 'badge-atendida' if m.tipo == 'entrada' else 'badge-cancelada' }}">{{ 'Entrada' if m.tipo == 'entrada' else 'Saída' }}</span></td>
+        <td>{{ m.origem }}</td>
+        <td>{{ m.descricao }}</td>
+        <td class="nowrap">{{ m.forma_pagamento or '-' }}</td>
+        <td class="text-right nowrap" style="{{ 'color:#b42318;' if m.tipo == 'saida' else '' }}">
+          {{ '-' if m.tipo == 'saida' else '' }}R$ {{ '%.2f'|format(m.valor) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Nenhuma movimentação encontrada nesse período.</p>
+  {% endif %}
+</div>
+{% endblock %}

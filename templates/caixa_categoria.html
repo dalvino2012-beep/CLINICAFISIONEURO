@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Resumo por Categoria{% endblock %}
+{% block content %}
+<h1>Resumo por Categoria e Forma de Pagamento</h1>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <label for="inicio" style="margin:0; font-weight:600; color:var(--primary-dark);">Período:</label>
+    <input type="date" id="inicio" name="inicio" value="{{ inicio }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <span>até</span>
+    <input type="date" id="fim" name="fim" value="{{ fim }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <button class="btn btn-small" type="submit">Filtrar</button>
+  </form>
+</div>
+
+<div class="actions">
+  <a class="btn btn-secondary" href="{{ url_for('caixa_relatorios') }}">← Voltar aos relatórios</a>
+</div>
+
+<div class="card">
+  <h2>Entradas por forma de pagamento</h2>
+  {% if entradas_forma %}
+  {% for r in entradas_forma %}
+  <div class="caixa-barra-linha">
+    <div class="caixa-barra-label">{{ r.forma }}</div>
+    <div class="caixa-barra-fundo"><div class="caixa-barra-preenchida caixa-barra-entrada" style="width: {{ ((r.total / total_entradas * 100) if total_entradas else 0)|round(1) }}%;"></div></div>
+    <div class="caixa-barra-valor">R$ {{ '%.2f'|format(r.total) }}</div>
+  </div>
+  {% endfor %}
+  <p class="muted" style="margin-top:0.6rem;">Total de entradas no período: <strong>R$ {{ '%.2f'|format(total_entradas) }}</strong></p>
+  {% else %}
+  <p class="muted">Nenhuma entrada nesse período.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Saídas por categoria</h2>
+  {% if saidas_categoria %}
+  {% for r in saidas_categoria %}
+  <div class="caixa-barra-linha">
+    <div class="caixa-barra-label">{{ r.categoria }}</div>
+    <div class="caixa-barra-fundo"><div class="caixa-barra-preenchida caixa-barra-saida" style="width: {{ ((r.total / total_saidas * 100) if total_saidas else 0)|round(1) }}%;"></div></div>
+    <div class="caixa-barra-valor">R$ {{ '%.2f'|format(r.total) }}</div>
+  </div>
+  {% endfor %}
+  <p class="muted" style="margin-top:0.6rem;">Total de saídas no período: <strong>R$ {{ '%.2f'|format(total_saidas) }}</strong></p>
+  {% else %}
+  <p class="muted">Nenhuma saída nesse período.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Saídas por forma de pagamento</h2>
+  {% if saidas_forma %}
+  {% for r in saidas_forma %}
+  <div class="caixa-barra-linha">
+    <div class="caixa-barra-label">{{ r.forma }}</div>
+    <div class="caixa-barra-fundo"><div class="caixa-barra-preenchida caixa-barra-saida" style="width: {{ ((r.total / total_saidas * 100) if total_saidas else 0)|round(1) }}%;"></div></div>
+    <div class="caixa-barra-valor">R$ {{ '%.2f'|format(r.total) }}</div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Nenhuma saída nesse período.</p>
+  {% endif %}
+</div>
+{% endblock %}

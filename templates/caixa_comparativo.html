@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Comparativo Mensal{% endblock %}
+{% block content %}
+<h1>Comparativo Mensal do Caixa</h1>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <label for="meses" style="margin:0; font-weight:600; color:var(--primary-dark);">Mostrar os últimos</label>
+    <select id="meses" name="meses" onchange="this.form.submit()"
+            style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+      {% for n in [3, 6, 12, 24] %}
+      <option value="{{ n }}" {{ 'selected' if n_meses == n }}>{{ n }} meses</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="actions">
+  <a class="btn btn-secondary" href="{{ url_for('caixa_relatorios') }}">← Voltar aos relatórios</a>
+</div>
+
+<div class="card">
+  <h2>Entradas x Saídas por mês</h2>
+  <div class="caixa-grafico">
+    {% for d in dados %}
+    <div class="caixa-grafico-coluna">
+      <div class="caixa-grafico-barras">
+        <div class="caixa-grafico-barra caixa-grafico-entrada" style="height: {{ ((d.entradas / max_valor * 100) if max_valor else 0)|round(1) }}%;" title="Entradas: R$ {{ '%.2f'|format(d.entradas) }}"></div>
+        <div class="caixa-grafico-barra caixa-grafico-saida" style="height: {{ ((d.saidas / max_valor * 100) if max_valor else 0)|round(1) }}%;" title="Saídas: R$ {{ '%.2f'|format(d.saidas) }}"></div>
+      </div>
+      <div class="caixa-grafico-mes">{{ d.label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="caixa-grafico-legenda">
+    <span><span class="caixa-legenda-cor caixa-grafico-entrada"></span> Entradas</span>
+    <span><span class="caixa-legenda-cor caixa-grafico-saida"></span> Saídas</span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Valores por mês</h2>
+  <div style="overflow-x:auto;">
+  <table>
+    <thead>
+      <tr><th>Mês</th><th class="text-right">Entradas</th><th class="text-right">Saídas</th><th class="text-right">Saldo</th></tr>
+    </thead>
+    <tbody>
+      {% for d in dados %}
+      <tr>
+        <td>{{ d.label }}</td>
+        <td class="text-right nowrap">R$ {{ '%.2f'|format(d.entradas) }}</td>
+        <td class="text-right nowrap">R$ {{ '%.2f'|format(d.saidas) }}</td>
+        <td class="text-right nowrap" style="{{ 'color:#b42318;' if d.saldo < 0 else '' }}">R$ {{ '%.2f'|format(d.saldo) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

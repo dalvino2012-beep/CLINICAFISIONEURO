@@ -107,3 +107,24 @@ CREATE TABLE IF NOT EXISTS consultas (
     observacoes TEXT,
     criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS caixa_entradas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    data TEXT NOT NULL,
+    descricao TEXT NOT NULL,
+    valor REAL NOT NULL,
+    forma_pagamento TEXT,
+    usuario_id INTEGER REFERENCES usuarios(id),
+    criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS caixa_saidas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    data TEXT NOT NULL,
+    descricao TEXT NOT NULL,
+    categoria TEXT,
+    valor REAL NOT NULL,
+    forma_pagamento TEXT,
+    usuario_id INTEGER REFERENCES usuarios(id),
+    criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);

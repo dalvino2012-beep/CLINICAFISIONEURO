@@ -132,6 +132,19 @@ def medico_required(view):
     return wrapped
 
 
+def caixa_required(view):
+    """Apenas administrador e recepção (balcão) têm acesso ao fluxo de caixa."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if g.user is None:
+            return redirect(url_for("login", next=request.path))
+        if g.user["perfil"] not in ("admin", "recepcao"):
+            flash("Acesso restrito ao administrador e à recepção.", "error")
+            return redirect(url_for("dashboard"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
 def is_medico():
     return g.user is not None and g.user["perfil"] == "medico"
 
@@ -439,7 +452,7 @@ def pacientes_novo():
             flash("Já existe um paciente com este CPF.", "error")
         finally:
             db.close()
-    return render_template("pacientes_form.html", paciente=None, anexos=[], receitas=[], evolucoes=[], minha_sala="")
+    return render_template("pacientes_form.html", paciente=None, anexos=[], receitas=[], historico=[], minha_sala="")
 
 
 @app.route("/pacientes/<int:paciente_id>/editar", methods=["GET", "POST"])
@@ -477,7 +490,13 @@ def pacientes_editar(paciente_id):
     receitas = db.execute(
         """SELECT r.*, m.nome AS medico_nome FROM receitas r
            LEFT JOIN medicos m ON m.id = r.medico_id
-           WHERE r.paciente_id = ? ORDER BY r.criado_em DESC""",
+           WHERE r.paciente_id = ? AND r.impresso_em IS NULL ORDER BY r.criado_em DESC""",
+        (paciente_id,),
+    ).fetchall()
+    receitas_impressas = db.execute(
+        """SELECT r.*, m.nome AS medico_nome FROM receitas r
+           LEFT JOIN medicos m ON m.id = r.medico_id
+           WHERE r.paciente_id = ? AND r.impresso_em IS NOT NULL ORDER BY r.impresso_em DESC""",
         (paciente_id,),
     ).fetchall()
     evolucoes = db.execute(
@@ -486,11 +505,18 @@ def pacientes_editar(paciente_id):
            WHERE e.paciente_id = ? ORDER BY e.criado_em DESC""",
         (paciente_id,),
     ).fetchall()
+    # histórico único: evoluções do médico + receitas já impressas, misturadas por data (mais recente primeiro)
+    historico = sorted(
+        [{"tipo": "evolucao", "data": e["criado_em"], "item": e} for e in evolucoes]
+        + [{"tipo": "receita", "data": r["impresso_em"], "item": r} for r in receitas_impressas],
+        key=lambda h: h["data"] or "",
+        reverse=True,
+    )
     # campo "Sala/consultório" sempre em branco: o médico digita a sala em que estiver na hora
     minha_sala = ""
     db.close()
     return render_template("pacientes_form.html", paciente=paciente, anexos=anexos,
-                           receitas=receitas, evolucoes=evolucoes, minha_sala=minha_sala)
+                           receitas=receitas, historico=historico, minha_sala=minha_sala)
 
 
 @app.route("/pacientes/<int:paciente_id>/chamar-telao", methods=["POST"])
@@ -771,6 +797,14 @@ def receita_ver(receita_id):
         db.close()
         flash("Receita de paciente não vinculado a você.", "error")
         return redirect(url_for("pacientes_lista"))
+    # abrir esta tela (Gerar e imprimir / Abrir-Imprimir) já conta como impressa:
+    # some de "Receitas geradas" e passa a integrar o histórico da consulta
+    if not receita["impresso_em"]:
+        db.execute(
+            "UPDATE receitas SET impresso_em = datetime('now','localtime') WHERE id = ? AND impresso_em IS NULL",
+            (receita_id,),
+        )
+        db.commit()
     db.close()
     # número de whatsapp do paciente (só dígitos, com DDI Brasil quando faltar)
     zap = "".join(ch for ch in (receita["paciente_telefone"] or "") if ch.isdigit())
@@ -852,6 +886,16 @@ def imprimir_documentos(paciente_id):
                 ORDER BY e.criado_em""",
             [paciente_id] + [int(i) for i in evolucao_ids],
         ).fetchall()
+
+    # marca as receitas impressas: saem de "Receitas geradas" e passam a integrar o histórico
+    if receitas:
+        ph = ",".join("?" * len(receitas))
+        db.execute(
+            f"UPDATE receitas SET impresso_em = COALESCE(impresso_em, datetime('now','localtime')) WHERE id IN ({ph})",
+            [r["id"] for r in receitas],
+        )
+        db.commit()
+
     db.close()
 
     if not receitas and not evolucoes:
@@ -1896,6 +1940,529 @@ def atendimento_medico(senha_id):
     ).fetchall()
     db.close()
     return render_template("atendimento_medico.html", s=s, evolucoes=evolucoes, receitas=receitas)
+
+
+# ---------- Fluxo de Caixa ----------
+
+FORMAS_PAGAMENTO_CAIXA = ["Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", "Transferência", "Boleto"]
+
+
+def _caixa_dados(inicio, fim):
+    """Movimentações (entradas de atendimento + manuais, e saídas) de um período, já com totais."""
+    db = get_db()
+    atendimentos = db.execute(
+        """SELECT s.id, s.data, s.valor, s.forma_pagamento, s.tipo_atendimento, s.convenio,
+                  p.nome AS paciente_nome
+           FROM senhas s LEFT JOIN pacientes p ON p.id = s.paciente_id
+           WHERE s.valor IS NOT NULL AND s.data BETWEEN ? AND ?
+           ORDER BY s.data, s.criado_em""",
+        (inicio, fim),
+    ).fetchall()
+    entradas_manuais = db.execute(
+        """SELECT e.*, u.nome AS usuario_nome FROM caixa_entradas e
+           LEFT JOIN usuarios u ON u.id = e.usuario_id
+           WHERE e.data BETWEEN ? AND ?
+           ORDER BY e.data, e.criado_em""",
+        (inicio, fim),
+    ).fetchall()
+    saidas = db.execute(
+        """SELECT s.*, u.nome AS usuario_nome FROM caixa_saidas s
+           LEFT JOIN usuarios u ON u.id = s.usuario_id
+           WHERE s.data BETWEEN ? AND ?
+           ORDER BY s.data, s.criado_em""",
+        (inicio, fim),
+    ).fetchall()
+    db.close()
+
+    total_atendimentos = sum(a["valor"] for a in atendimentos)
+    total_entradas_manuais = sum(e["valor"] for e in entradas_manuais)
+    total_entradas = total_atendimentos + total_entradas_manuais
+    total_saidas = sum(s["valor"] for s in saidas)
+    saldo = total_entradas - total_saidas
+
+    movimentos = []
+    for a in atendimentos:
+        desc = a["paciente_nome"] or "Paciente não identificado"
+        if a["tipo_atendimento"] == "convenio" and a["convenio"]:
+            desc += f" (convênio {a['convenio']})"
+        movimentos.append({
+            "data": a["data"], "tipo": "entrada", "origem": "Atendimento",
+            "descricao": desc, "valor": a["valor"], "forma_pagamento": a["forma_pagamento"],
+        })
+    for e in entradas_manuais:
+        movimentos.append({
+            "data": e["data"], "tipo": "entrada", "origem": "Manual", "id": e["id"],
+            "descricao": e["descricao"], "valor": e["valor"], "forma_pagamento": e["forma_pagamento"],
+        })
+    for s in saidas:
+        movimentos.append({
+            "data": s["data"], "tipo": "saida", "origem": s["categoria"] or "Saída", "id": s["id"],
+            "descricao": s["descricao"], "valor": s["valor"], "forma_pagamento": s["forma_pagamento"],
+        })
+    movimentos.sort(key=lambda m: m["data"])
+
+    return {
+        "movimentos": movimentos,
+        "total_entradas": total_entradas,
+        "total_saidas": total_saidas,
+        "saldo": saldo,
+        "total_atendimentos": total_atendimentos,
+        "total_entradas_manuais": total_entradas_manuais,
+    }
+
+
+@app.route("/caixa")
+@caixa_required
+def caixa():
+    hoje = date.today()
+    inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
+    fim = request.args.get("fim", "").strip() or hoje.isoformat()
+    if fim < inicio:
+        inicio, fim = fim, inicio
+    dados = _caixa_dados(inicio, fim)
+    return render_template("caixa.html", inicio=inicio, fim=fim, **dados)
+
+
+@app.route("/caixa/entrada/nova", methods=["GET", "POST"])
+@caixa_required
+def caixa_entrada_nova():
+    if request.method == "POST":
+        data_ = request.form.get("data", "").strip() or date.today().isoformat()
+        descricao = request.form.get("descricao", "").strip()
+        valor = request.form.get("valor", "").replace(",", ".").strip()
+        forma_pagamento = request.form.get("forma_pagamento", "").strip()
+        if not descricao or not valor:
+            flash("Preencha a descrição e o valor.", "error")
+        else:
+            try:
+                valor = float(valor)
+            except ValueError:
+                valor = None
+            if valor is None:
+                flash("Valor inválido.", "error")
+            else:
+                db = get_db()
+                db.execute(
+                    """INSERT INTO caixa_entradas (data, descricao, valor, forma_pagamento, usuario_id)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (data_, descricao, valor, forma_pagamento, g.user["id"]),
+                )
+                db.commit()
+                db.close()
+                flash("Entrada registrada.", "success")
+                return redirect(url_for("caixa"))
+    return render_template(
+        "caixa_entrada_form.html", hoje=date.today().isoformat(),
+        formas_pagamento=FORMAS_PAGAMENTO_CAIXA,
+    )
+
+
+@app.route("/caixa/entrada/<int:entrada_id>/excluir", methods=["POST"])
+@admin_required
+def caixa_entrada_excluir(entrada_id):
+    db = get_db()
+    db.execute("DELETE FROM caixa_entradas WHERE id = ?", (entrada_id,))
+    db.commit()
+    db.close()
+    flash("Entrada excluída.", "success")
+    return redirect(url_for("caixa"))
+
+
+@app.route("/caixa/saida/nova", methods=["GET", "POST"])
+@caixa_required
+def caixa_saida_nova():
+    if request.method == "POST":
+        data_ = request.form.get("data", "").strip() or date.today().isoformat()
+        descricao = request.form.get("descricao", "").strip()
+        categoria = request.form.get("categoria", "").strip()
+        valor = request.form.get("valor", "").replace(",", ".").strip()
+        forma_pagamento = request.form.get("forma_pagamento", "").strip()
+        if not descricao or not valor:
+            flash("Preencha a descrição e o valor.", "error")
+        else:
+            try:
+                valor = float(valor)
+            except ValueError:
+                valor = None
+            if valor is None:
+                flash("Valor inválido.", "error")
+            else:
+                db = get_db()
+                db.execute(
+                    """INSERT INTO caixa_saidas (data, descricao, categoria, valor, forma_pagamento, usuario_id)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (data_, descricao, categoria, valor, forma_pagamento, g.user["id"]),
+                )
+                db.commit()
+                db.close()
+                flash("Saída registrada.", "success")
+                return redirect(url_for("caixa"))
+    return render_template(
+        "caixa_saida_form.html", hoje=date.today().isoformat(),
+        formas_pagamento=FORMAS_PAGAMENTO_CAIXA,
+    )
+
+
+@app.route("/caixa/saida/<int:saida_id>/excluir", methods=["POST"])
+@admin_required
+def caixa_saida_excluir(saida_id):
+    db = get_db()
+    db.execute("DELETE FROM caixa_saidas WHERE id = ?", (saida_id,))
+    db.commit()
+    db.close()
+    flash("Saída excluída.", "success")
+    return redirect(url_for("caixa"))
+
+
+# ---------- Fluxo de Caixa: Relatórios ----------
+
+NOMES_MES_ABREV = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+NOMES_MES_EXT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto",
+                 "Setembro", "Outubro", "Novembro", "Dezembro"]
+
+
+@app.route("/caixa/relatorios")
+@caixa_required
+def caixa_relatorios():
+    return render_template("caixa_relatorios.html")
+
+
+def _parse_periodo_fechamento():
+    """Lê tipo (dia/mês) e data da query string e devolve (tipo, data_sel, inicio, fim)."""
+    hoje = date.today()
+    tipo = request.args.get("tipo", "dia")
+    if tipo not in ("dia", "mes"):
+        tipo = "dia"
+    if tipo == "mes":
+        data_sel = request.args.get("mes", "").strip() or hoje.strftime("%Y-%m")
+        ano_i, mes_i = (int(x) for x in data_sel.split("-"))
+        inicio = f"{ano_i:04d}-{mes_i:02d}-01"
+        prox = date(ano_i + 1, 1, 1) if mes_i == 12 else date(ano_i, mes_i + 1, 1)
+        fim = (prox - timedelta(days=1)).isoformat()
+    else:
+        data_sel = request.args.get("data", "").strip() or hoje.isoformat()
+        inicio = fim = data_sel
+    return tipo, data_sel, inicio, fim
+
+
+@app.route("/caixa/relatorios/fechamento")
+@caixa_required
+def caixa_relatorio_fechamento():
+    tipo, data_sel, inicio, fim = _parse_periodo_fechamento()
+    dados = _caixa_dados(inicio, fim)
+    return render_template(
+        "caixa_fechamento.html", tipo=tipo, data_sel=data_sel, inicio=inicio, fim=fim,
+        hoje=date.today().isoformat(), **dados,
+    )
+
+
+@app.route("/caixa/relatorios/fechamento/pdf")
+@caixa_required
+def caixa_relatorio_fechamento_pdf():
+    tipo, data_sel, inicio, fim = _parse_periodo_fechamento()
+    dados = _caixa_dados(inicio, fim)
+    pdf = _gerar_pdf_fechamento(tipo, data_sel, dados["movimentos"], dados["total_entradas"],
+                                 dados["total_saidas"], dados["saldo"])
+    from flask import Response
+    nome = f"fechamento_caixa_{data_sel}.pdf"
+    return Response(pdf, mimetype="application/pdf",
+                    headers={"Content-Disposition": f"inline; filename={nome}"})
+
+
+def _gerar_pdf_fechamento(tipo, data_sel, movimentos, total_entradas, total_saidas, saldo):
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
+    from reportlab.lib import colors
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+                            topMargin=20 * mm, bottomMargin=20 * mm)
+    styles = getSampleStyleSheet()
+    h_tit = ParagraphStyle("t", parent=styles["Heading2"], fontSize=14, textColor=colors.HexColor("#0B5FA5"), spaceBefore=14, spaceAfter=4)
+    h_info = ParagraphStyle("i", parent=styles["Normal"], fontSize=10, textColor=colors.HexColor("#333333"), spaceAfter=10)
+    h_cell = ParagraphStyle("cel", parent=styles["Normal"], fontSize=8.5, leading=11)
+    h_cell_r = ParagraphStyle("celr", parent=h_cell, alignment=2)
+
+    titulo = "FECHAMENTO DE CAIXA — DIÁRIO" if tipo == "dia" else "FECHAMENTO DE CAIXA — MENSAL"
+    if tipo == "mes":
+        ano_s, mes_s = data_sel.split("-")
+        periodo_txt = f"{NOMES_MES_EXT[int(mes_s)]} de {ano_s}"
+    else:
+        periodo_txt = _data_iso_para_br(data_sel)
+
+    story = [
+        _cabecalho_pdf(),
+        Spacer(1, 6), HRFlowable(width="100%", color=colors.HexColor("#dde5e2")), Spacer(1, 4),
+        Paragraph(titulo, h_tit),
+        Paragraph(f"Período: {periodo_txt}", h_info),
+    ]
+
+    if movimentos:
+        dados_tabela = [["Data", "Tipo", "Origem", "Descrição", "Forma", "Valor (R$)"]]
+        for m in movimentos:
+            valor_fmt = ("-" if m["tipo"] == "saida" else "") + f"{m['valor']:,.2f}"
+            dados_tabela.append([
+                _data_iso_para_br(m["data"]),
+                "Entrada" if m["tipo"] == "entrada" else "Saída",
+                m["origem"],
+                Paragraph(m["descricao"], h_cell),
+                m["forma_pagamento"] or "-",
+                Paragraph(valor_fmt, h_cell_r),
+            ])
+        tabela = Table(dados_tabela, colWidths=[18 * mm, 16 * mm, 22 * mm, None, 24 * mm, 24 * mm], repeatRows=1)
+        tabela.setStyle(TableStyle([
+            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B5FA5")),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f7f6")]),
+        ]))
+        story += [Spacer(1, 6), tabela, Spacer(1, 10)]
+    else:
+        story += [Paragraph("Nenhuma movimentação nesse período.", h_info)]
+
+    totais = Table([
+        ["Total de entradas", f"R$ {total_entradas:,.2f}"],
+        ["Total de saídas", f"R$ {total_saidas:,.2f}"],
+        ["Saldo do período", f"R$ {saldo:,.2f}"],
+    ], colWidths=[60 * mm, 40 * mm])
+    totais.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 10.5),
+        ("FONTNAME", (0, 2), (-1, 2), "Helvetica-Bold"),
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("LINEABOVE", (0, 2), (-1, 2), 0.8, colors.HexColor("#333333")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story += [totais, Spacer(1, 40),
+              HRFlowable(width="55%", color=colors.HexColor("#333333")),
+              Paragraph("Responsável pelo fechamento", h_info)]
+
+    doc.build(story, onFirstPage=_faixa_azul, onLaterPages=_faixa_azul)
+    return buf.getvalue()
+
+
+def _xlsx_col_letra(idx):
+    """Índice de coluna (0-based) para letra de coluna do Excel (0->A, 25->Z, 26->AA...)."""
+    idx += 1
+    letras = ""
+    while idx > 0:
+        idx, resto = divmod(idx - 1, 26)
+        letras = chr(65 + resto) + letras
+    return letras
+
+
+def _xlsx_celula(col_idx, row_idx, valor):
+    from xml.sax.saxutils import escape
+    ref = f"{_xlsx_col_letra(col_idx)}{row_idx}"
+    if isinstance(valor, bool):
+        texto = escape("Sim" if valor else "Não")
+        return f'<c r="{ref}" t="inlineStr"><is><t xml:space="preserve">{texto}</t></is></c>'
+    if isinstance(valor, (int, float)):
+        return f'<c r="{ref}"><v>{valor}</v></c>'
+    texto = escape("" if valor is None else str(valor))
+    return f'<c r="{ref}" t="inlineStr"><is><t xml:space="preserve">{texto}</t></is></c>'
+
+
+def _gerar_xlsx_simples(nome_aba, cabecalhos, linhas, larguras=None):
+    """Gera um .xlsx de verdade (Office Open XML), sem depender de nenhuma biblioteca externa
+    (só zipfile/xml, que já vêm com o Python) — evita o problema do CSV, cujo separador
+    (";" ou ",") depende da configuração regional do Windows e pode abrir tudo numa coluna só."""
+    import zipfile
+    from io import BytesIO
+    from xml.sax.saxutils import escape
+
+    linhas_xml = ['<row r="1">' + "".join(_xlsx_celula(i, 1, h) for i, h in enumerate(cabecalhos)) + "</row>"]
+    for r_idx, linha in enumerate(linhas, start=2):
+        celulas = "".join(_xlsx_celula(i, r_idx, v) for i, v in enumerate(linha))
+        linhas_xml.append(f'<row r="{r_idx}">{celulas}</row>')
+
+    cols_xml = ""
+    if larguras:
+        partes = [f'<col min="{i+1}" max="{i+1}" width="{w}" customWidth="1"/>' for i, w in enumerate(larguras)]
+        cols_xml = "<cols>" + "".join(partes) + "</cols>"
+
+    sheet_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        + cols_xml + "<sheetData>" + "".join(linhas_xml) + "</sheetData>"
+        "</worksheet>"
+    )
+    content_types = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        "</Types>"
+    )
+    rels = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+        "</Relationships>"
+    )
+    workbook_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        f'<sheets><sheet name="{escape(nome_aba)[:31]}" sheetId="1" r:id="rId1"/></sheets>'
+        "</workbook>"
+    )
+    workbook_rels = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+        "</Relationships>"
+    )
+
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", content_types)
+        z.writestr("_rels/.rels", rels)
+        z.writestr("xl/workbook.xml", workbook_xml)
+        z.writestr("xl/_rels/workbook.xml.rels", workbook_rels)
+        z.writestr("xl/worksheets/sheet1.xml", sheet_xml)
+    return buf.getvalue()
+
+
+@app.route("/caixa/relatorios/exportar")
+@caixa_required
+def caixa_relatorio_exportar():
+    hoje = date.today()
+    inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
+    fim = request.args.get("fim", "").strip() or hoje.isoformat()
+    if fim < inicio:
+        inicio, fim = fim, inicio
+    dados = _caixa_dados(inicio, fim)
+
+    cabecalhos = ["Data", "Tipo", "Origem", "Descrição", "Forma de pagamento", "Valor (R$)"]
+    linhas = []
+    for m in dados["movimentos"]:
+        valor = -m["valor"] if m["tipo"] == "saida" else m["valor"]
+        linhas.append([
+            _data_iso_para_br(m["data"]), "Entrada" if m["tipo"] == "entrada" else "Saída",
+            m["origem"], m["descricao"], m["forma_pagamento"] or "-", round(valor, 2),
+        ])
+    linhas.append(["", "", "", "", "", ""])
+    linhas.append(["", "", "", "", "Total de entradas", round(dados["total_entradas"], 2)])
+    linhas.append(["", "", "", "", "Total de saídas", round(-dados["total_saidas"], 2)])
+    linhas.append(["", "", "", "", "Saldo", round(dados["saldo"], 2)])
+
+    xlsx = _gerar_xlsx_simples("Fluxo de Caixa", cabecalhos, linhas,
+                                larguras=[12, 10, 20, 34, 20, 14])
+    from flask import Response
+    nome_arquivo = f"fluxo_caixa_{inicio}_a_{fim}.xlsx"
+    return Response(
+        xlsx,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={nome_arquivo}"},
+    )
+
+
+@app.route("/caixa/relatorios/categoria")
+@caixa_required
+def caixa_relatorio_categoria():
+    hoje = date.today()
+    inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
+    fim = request.args.get("fim", "").strip() or hoje.isoformat()
+    if fim < inicio:
+        inicio, fim = fim, inicio
+
+    db = get_db()
+    entradas_forma = db.execute(
+        """SELECT COALESCE(NULLIF(forma_pagamento, ''), 'Não informado') AS forma, SUM(valor) AS total
+           FROM (
+             SELECT forma_pagamento, valor FROM senhas WHERE valor IS NOT NULL AND data BETWEEN ? AND ?
+             UNION ALL
+             SELECT forma_pagamento, valor FROM caixa_entradas WHERE data BETWEEN ? AND ?
+           )
+           GROUP BY forma ORDER BY total DESC""",
+        (inicio, fim, inicio, fim),
+    ).fetchall()
+    saidas_categoria = db.execute(
+        """SELECT COALESCE(NULLIF(categoria, ''), 'Sem categoria') AS categoria, SUM(valor) AS total
+           FROM caixa_saidas WHERE data BETWEEN ? AND ? GROUP BY categoria ORDER BY total DESC""",
+        (inicio, fim),
+    ).fetchall()
+    saidas_forma = db.execute(
+        """SELECT COALESCE(NULLIF(forma_pagamento, ''), 'Não informado') AS forma, SUM(valor) AS total
+           FROM caixa_saidas WHERE data BETWEEN ? AND ? GROUP BY forma ORDER BY total DESC""",
+        (inicio, fim),
+    ).fetchall()
+    db.close()
+
+    total_entradas = sum(r["total"] for r in entradas_forma)
+    total_saidas = sum(r["total"] for r in saidas_categoria)
+
+    return render_template(
+        "caixa_categoria.html", inicio=inicio, fim=fim,
+        entradas_forma=entradas_forma, saidas_categoria=saidas_categoria, saidas_forma=saidas_forma,
+        total_entradas=total_entradas, total_saidas=total_saidas,
+    )
+
+
+@app.route("/caixa/relatorios/comparativo")
+@caixa_required
+def caixa_relatorio_comparativo():
+    try:
+        n_meses = int(request.args.get("meses", 6))
+    except ValueError:
+        n_meses = 6
+    n_meses = max(3, min(n_meses, 24))
+
+    hoje = date.today()
+    meses = []
+    ano_c, mes_c = hoje.year, hoje.month
+    for _ in range(n_meses):
+        meses.append(f"{ano_c:04d}-{mes_c:02d}")
+        mes_c -= 1
+        if mes_c == 0:
+            mes_c = 12
+            ano_c -= 1
+    meses.reverse()
+    mes_mais_antigo = meses[0] + "-01"
+
+    db = get_db()
+    rows_at = db.execute(
+        """SELECT strftime('%Y-%m', data) AS mes, SUM(valor) AS total FROM senhas
+           WHERE valor IS NOT NULL AND data >= ? GROUP BY mes""",
+        (mes_mais_antigo,),
+    ).fetchall()
+    rows_ent = db.execute(
+        """SELECT strftime('%Y-%m', data) AS mes, SUM(valor) AS total FROM caixa_entradas
+           WHERE data >= ? GROUP BY mes""",
+        (mes_mais_antigo,),
+    ).fetchall()
+    rows_sai = db.execute(
+        """SELECT strftime('%Y-%m', data) AS mes, SUM(valor) AS total FROM caixa_saidas
+           WHERE data >= ? GROUP BY mes""",
+        (mes_mais_antigo,),
+    ).fetchall()
+    db.close()
+
+    mapa_at = {r["mes"]: (r["total"] or 0) for r in rows_at}
+    mapa_ent = {r["mes"]: (r["total"] or 0) for r in rows_ent}
+    mapa_sai = {r["mes"]: (r["total"] or 0) for r in rows_sai}
+
+    dados = []
+    for mes in meses:
+        ano_s, mes_s = mes.split("-")
+        entradas = mapa_at.get(mes, 0) + mapa_ent.get(mes, 0)
+        saidas = mapa_sai.get(mes, 0)
+        dados.append({
+            "mes": mes, "label": f"{NOMES_MES_ABREV[int(mes_s)]}/{ano_s[2:]}",
+            "entradas": entradas, "saidas": saidas, "saldo": entradas - saidas,
+        })
+    max_valor = max([max(d["entradas"], d["saidas"]) for d in dados] + [1])
+
+    return render_template("caixa_comparativo.html", dados=dados, n_meses=n_meses, max_valor=max_valor)
 
 
 @app.route("/senhas/<int:senha_id>/recibo")

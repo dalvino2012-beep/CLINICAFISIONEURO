@@ -27,10 +27,10 @@
   <p class="muted" style="margin:0; flex-basis:100%;">O próximo da fila aparece na TV com <strong>senha + nome + a sala informada acima</strong>.</p>
 </div>
 
-<div class="card">
-  <h2>Aguardando você ({{ aguardando|length }})</h2>
+<div class="card" style="padding-top:0.1cm;">
+  <h2 style="margin-top:0;">Aguardando você ({{ aguardando|length }})</h2>
   {% if aguardando %}
-  <table>
+  <table class="tabela-compacta">
     <thead><tr><th>Senha</th><th>Paciente</th><th></th></tr></thead>
     <tbody>
       {% for s in aguardando %}

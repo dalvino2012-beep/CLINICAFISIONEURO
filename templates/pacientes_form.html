@@ -221,26 +221,47 @@
   {% endif %}
 
   <h3 style="margin:0.6rem 0 0.4rem; border-top:1px solid var(--border); padding-top:0.8rem;">Consultas anteriores (histórico)</h3>
-  {% if evolucoes %}
+  {% if historico %}
   {% if pode_receita() %}
   <form method="post" action="{{ url_for('imprimir_documentos', paciente_id=paciente.id) }}" target="_blank">
   {% endif %}
-    {% for e in evolucoes %}
-    <div style="border-bottom:1px solid #dde5e2; padding:0.6rem 0; display:flex; gap:0.6rem;">
-      {% if pode_receita() %}<input type="checkbox" class="ev-chk" name="evolucao_ids" value="{{ e.id }}" style="margin-top:0.2rem;">{% endif %}
+    {% for h in historico %}
+    {% set e = h.item %}
+    <div style="border-bottom:1px solid #dde5e2; padding:{{ '0.35rem' if h.tipo == 'receita' else '0.6rem' }} 0; display:flex; gap:0.6rem; align-items:{{ 'center' if h.tipo == 'receita' else 'flex-start' }};">
+      {% if pode_receita() %}
+      {% if h.tipo == 'evolucao' %}
+      <input type="checkbox" class="hist-chk" name="evolucao_ids" value="{{ e.id }}" style="margin-top:0.2rem;">
+      {% else %}
+      <input type="checkbox" class="hist-chk" name="receita_ids" value="{{ e.id }}">
+      {% endif %}
+      {% endif %}
       <div style="flex:1;">
+        {% if h.tipo == 'evolucao' %}
         <div class="muted">{{ e.criado_em }} — {{ e.medico_nome or 'Médico' }}{% if e.convenio %} · {{ e.convenio }}{% endif %}</div>
         <div style="white-space:pre-wrap;">{{ e.texto }}</div>
+        {% else %}
+        <div class="muted" style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+          <span class="badge badge-receita badge-compact">REC</span>
+          {% if e.tipo == 'controlada' %}
+          <span class="badge badge-compact" style="background:#b7791f;">CON</span>
+          {% elif e.tipo == 'receita' %}
+          <span class="badge badge-compact" style="background:var(--success);">SIM</span>
+          {% endif %}
+          <span>{{ e.impresso_em[8:10] }}/{{ e.impresso_em[5:7] }}/{{ e.impresso_em[0:4] }} {{ e.impresso_em[11:16] }}
+          — {{ e.medico_nome or 'Médico' }} · {{ {'receita':'Receita','exame':'Exames','ambos':'Receita + Exames','controlada':'Controlada (2 vias)'}.get(e.tipo, e.tipo) }}</span>
+          <a class="btn btn-small" href="{{ url_for('receita_ver', receita_id=e.id) }}" style="padding:0.12rem 0.5rem; font-size:0.78rem;">Abrir / Imprimir</a>
+        </div>
+        {% endif %}
       </div>
     </div>
     {% endfor %}
     {% if pode_receita() %}
     <div style="margin-top:0.8rem; display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
-      <button type="button" class="btn btn-small btn-secondary" onclick="marcarEv(true)">Marcar todas</button>
-      <button type="button" class="btn btn-small btn-secondary" onclick="marcarEv(false)">Limpar</button>
+      <button type="button" class="btn btn-small btn-secondary" onclick="marcarHist(true)">Marcar todas</button>
+      <button type="button" class="btn btn-small btn-secondary" onclick="marcarHist(false)">Limpar</button>
       <button type="submit" class="btn">🖨️ Imprimir selecionadas</button>
     </div>
-    <p class="muted" style="margin-top:0.4rem;">Marque as consultas anteriores que deseja imprimir e clique em <strong>Imprimir selecionadas</strong>.</p>
+    <p class="muted" style="margin-top:0.4rem;">Marque os itens do histórico que deseja imprimir e clique em <strong>Imprimir selecionadas</strong>.</p>
   </form>
   {% endif %}
   {% else %}
@@ -248,7 +269,7 @@
   {% endif %}
 </div>
 <script>
-  function marcarEv(v) { document.querySelectorAll('.ev-chk').forEach(function (c) { c.checked = v; }); }
+  function marcarHist(v) { document.querySelectorAll('.hist-chk').forEach(function (c) { c.checked = v; }); }
 </script>
 
 <div class="card">

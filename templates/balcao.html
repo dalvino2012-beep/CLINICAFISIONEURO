@@ -11,7 +11,7 @@
 <div class="card">
   <h2>Fila — aguardando no balcão</h2>
   {% if aguardando %}
-  <table>
+  <table class="tabela-compacta">
     <thead><tr><th>Senha</th><th>Paciente</th><th>Tipo</th><th></th></tr></thead>
     <tbody>
       {% for s in aguardando %}
@@ -21,7 +21,7 @@
         <td>{{ {'particular':'Particular','convenio':'Convênio'}.get(s.tipo_atendimento, '-') }}</td>
         <td class="text-right">
           <form method="post" action="{{ url_for('balcao_chamar', senha_id=s.id) }}">
-            <button class="btn" type="submit">📢 Chamar</button>
+            <button class="btn btn-small" type="submit">📢 Chamar</button>
           </form>
         </td>
       </tr>
@@ -34,7 +34,7 @@
 {% if em_atendimento %}
 <div class="card">
   <h2>Em atendimento no balcão</h2>
-  <table>
+  <table class="tabela-compacta">
     <thead><tr><th>Senha</th><th>Paciente</th><th></th></tr></thead>
     <tbody>
       {% for s in em_atendimento %}
@@ -52,7 +52,7 @@
 <div class="card">
   <h2>Aguardando o médico</h2>
   {% if aguardando_medico %}
-  <table>
+  <table class="tabela-compacta">
     <thead><tr><th>Senha</th><th>Paciente</th><th>Médico</th><th>Sala</th><th>Situação</th><th></th></tr></thead>
     <tbody>
       {% for s in aguardando_medico %}

@@ -68,6 +68,7 @@ def init_db():
     add_col("pacientes", "whatsapp", "INTEGER DEFAULT 0")
     add_col("pacientes", "cep", "TEXT")
     add_col("pacientes", "email", "TEXT")
+    add_col("receitas", "impresso_em", "TEXT")
     conn.commit()
 
     if is_new:

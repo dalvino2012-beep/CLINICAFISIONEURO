@@ -1,20 +1,33 @@
 {% extends "base.html" %}
 {% block title %}Medicamento de alto custo{% endblock %}
 {% block content %}
+<div class="lme-frame">
 <div class="lme-header">
-  <div><strong>SUS</strong><br><small>Ministerio da Saude</small></div>
-  <div><strong>COMPONENTE ESPECIALIZADO DA ASSISTENCIA FARMACEUTICA</strong><br>
-    <span>LAUDO DE SOLICITACAO, AVALIACAO E AUTORIZACAO DE MEDICAMENTO(S)</span>
+  <div class="lme-sus">
+    <span class="lme-sus-word">SUS</span>
+    <svg class="lme-cross" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="38" y="0" width="24" height="100"></rect>
+      <rect x="0" y="38" width="100" height="24"></rect>
+    </svg>
+    <div class="lme-sus-info">
+      <span>Sistema Unico de Saude</span>
+      <span>Ministerio da Saude</span>
+      <span>Secretaria de Estado da Saude</span>
+    </div>
   </div>
+  <div class="lme-header-bar lme-bar-dark">COMPONENTE ESPECIALIZADO DA ASSISTENCIA FARMACEUTICA</div>
+  <div class="lme-header-bar lme-bar-light">LAUDO DE SOLICITACAO, AVALIACAO E AUTORIZACAO DE MEDICAMENTO(S)</div>
+  <div class="lme-header-bar">SOLICITACAO DE MEDICAMENTO(S)</div>
+  <div class="lme-header-bar lme-bar-small">CAMPOS DE PREENCHIMENTO EXCLUSIVO PELO MEDICO SOLICITANTE</div>
 </div>
 <div class="actions lme-actions">
   <h1>Medicamento de alto custo</h1>
-  <button type="button" class="btn" onclick="window.print()">Imprimir formulario</button>
+  <button type="button" class="btn no-print" onclick="window.print()">Imprimir formulario</button>
 </div>
 <p class="muted">Preenchimento manual, independente dos pacientes cadastrados.</p>
 
 <form class="card compacto lme-form" onsubmit="return false;">
-  <h2>Solicitacao de medicamento(s)</h2>
+  <h2 class="no-print">Solicitacao de medicamento(s)</h2>
   <div class="form-row">
     <div class="form-group"><label>1. Numero do CNES *</label><input name="cnes"></div>
     <div class="form-group"><label>2. Nome do estabelecimento de saude solicitante *</label><input name="estabelecimento"></div>
@@ -26,7 +39,7 @@
   </div>
   <div class="form-group"><label>4. Nome da mae do paciente *</label><input name="mae"></div>
 
-  <h3>Medicamento(s) e quantidade solicitada *</h3>
+  <h3 class="no-print">Medicamento(s) e quantidade solicitada *</h3>
   <div class="lme-table-wrap"><table class="lme-table">
     <thead><tr><th>#</th><th>Medicamento(s)</th><th>1o mes</th><th>2o mes</th><th>3o mes</th><th>4o mes</th><th>5o mes</th><th>6o mes</th></tr></thead>
     <tbody>{% for i in range(1, 7) %}
@@ -39,13 +52,23 @@
   <div class="form-group"><label>12. Paciente realizou tratamento previo ou esta em tratamento da doenca? *</label><div class="lme-checks"><label><input type="checkbox" name="tratamento_nao"> Nao</label><label><input type="checkbox" name="tratamento_sim"> Sim. Relatar:</label></div><textarea name="tratamento_relato" rows="3"></textarea></div>
   <div class="form-group"><label>13. Atestado de capacidade *</label><div class="lme-checks"><label><input type="checkbox" name="capacidade_nao"> Nao</label><label><input type="checkbox" name="capacidade_sim"> Sim</label></div><input name="responsavel_incapaz" placeholder="Nome do responsavel, se aplicavel"></div>
 
-  <div class="form-row"><div class="form-group"><label>14. Nome do medico solicitante *</label><input name="medico"></div><div class="form-group"><label>15. CNS do medico solicitante *</label><input name="cns_medico"></div><div class="form-group"><label>16. Data da solicitacao *</label><input name="data" type="date"></div></div>
-  <div class="form-group"><label>17. Assinatura e carimbo do medico</label><textarea name="assinatura_medico" rows="2"></textarea></div>
+  <div class="lme-row-17">
+    <div class="lme-row-17-left">
+      <div class="form-group"><label>14. Nome do medico solicitante *</label><input name="medico"></div>
+      <div class="form-row">
+        <div class="form-group"><label>15. CNS do medico solicitante *</label><input name="cns_medico"></div>
+        <div class="form-group"><label>16. Data da solicitacao *</label><input name="data" type="date"></div>
+      </div>
+    </div>
+    <div class="form-group lme-assinatura-medico"><label>17. Assinatura e carimbo do medico</label><textarea name="assinatura_medico" rows="4"></textarea></div>
+  </div>
 
   <h3>18. Campos preenchidos por</h3>
-  <div class="lme-checks"><label><input type="checkbox" name="por_paciente"> Paciente</label><label><input type="checkbox" name="por_mae"> Mae do paciente</label><label><input type="checkbox" name="por_responsavel"> Responsavel</label><label><input type="checkbox" name="por_medico"> Medico solicitante</label><label><input type="checkbox" name="por_outro"> Outro</label><input name="outro_nome" placeholder="Nome"></div>
+  <div class="lme-checks"><label><input type="checkbox" name="por_paciente"> Paciente</label><label><input type="checkbox" name="por_mae"> Mae do paciente</label><label><input type="checkbox" name="por_responsavel"> Responsavel</label><label><input type="checkbox" name="por_medico"> Medico solicitante</label><label><input type="checkbox" name="por_outro"> Outro. Informar nome</label><input name="outro_nome" placeholder="Nome"><span>e CPF</span><input name="outro_cpf" placeholder="CPF"></div>
   <div class="form-row"><div class="form-group"><label>19. Raca/cor/etnia informado pelo paciente ou responsavel</label><input name="raca_cor"></div><div class="form-group"><label>20. Telefone(s) para contato do paciente</label><input name="telefone"></div></div>
   <div class="form-row"><div class="form-group"><label>21. Numero do documento do paciente (CPF ou CNS)</label><input name="documento"></div><div class="form-group"><label>22. Correio eletronico do paciente</label><input name="email" type="email"></div></div>
   <div class="form-group"><label>23. Assinatura do responsavel pelo preenchimento</label><textarea name="assinatura_responsavel" rows="2"></textarea></div>
 </form>
+</div>
+<p class="lme-footnote">* Campos de preenchimento obrigatório</p>
 {% endblock %}

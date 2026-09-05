@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Fluxo de Caixa{% endblock %}
+{% block content %}
+<h1>Fluxo de Caixa</h1>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <label for="inicio" style="margin:0; font-weight:600; color:var(--primary-dark);">Período:</label>
+    <input type="date" id="inicio" name="inicio" value="{{ inicio }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <span>até</span>
+    <input type="date" id="fim" name="fim" value="{{ fim }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <button class="btn btn-small" type="submit">Filtrar</button>
+  </form>
+</div>
+
+<div class="grid-stats caixa-valores">
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(total_entradas) }}</div><div class="label">Total de entradas</div></div>
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(total_saidas) }}</div><div class="label">Total de saídas</div></div>
+  <div class="stat"><div class="num" style="{{ 'color:#b42318;' if saldo < 0 else '' }}">R$ {{ '%.2f'|format(saldo) }}</div><div class="label">Saldo do período</div></div>
+</div>
+
+<div class="actions caixa-acoes">
+  <a class="btn" href="{{ url_for('caixa_entrada_nova') }}">+ Nova entrada</a>
+  <a class="btn btn-secondary" href="{{ url_for('caixa_saida_nova') }}">+ Nova saída</a>
+  <a class="btn btn-secondary" href="{{ url_for('caixa_relatorios') }}">📊 Relatórios</a>
+</div>
+
+<div class="card">
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;">
+    <h2 style="margin:0;">Movimentações de {{ inicio|data_br }} até {{ fim|data_br }}</h2>
+    <a class="btn btn-small btn-secondary" href="{{ url_for('caixa_relatorio_exportar', inicio=inicio, fim=fim) }}">⬇ Exportar para Excel</a>
+  </div>
+  {% if movimentos %}
+  <div style="overflow-x:auto;">
+  <table>
+    <thead>
+      <tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Descrição</th><th class="nowrap">Forma de pagamento</th><th class="text-right">Valor</th>{% if g.user.perfil == 'admin' %}<th></th>{% endif %}</tr>
+    </thead>
+    <tbody>
+      {% for m in movimentos %}
+      <tr>
+        <td class="nowrap">{{ m.data|data_br }}</td>
+        <td><span class="badge {{ 'badge-atendida' if m.tipo == 'entrada' else 'badge-cancelada' }}">{{ 'Entrada' if m.tipo == 'entrada' else 'Saída' }}</span></td>
+        <td>{{ m.origem }}</td>
+        <td>{{ m.descricao }}</td>
+        <td class="nowrap">{{ m.forma_pagamento or '-' }}</td>
+        <td class="text-right nowrap" style="{{ 'color:#b42318;' if m.tipo == 'saida' else '' }}">
+          {{ '-' if m.tipo == 'saida' else '' }}R$ {{ '%.2f'|format(m.valor) }}
+        </td>
+        {% if g.user.perfil == 'admin' %}
+        <td class="text-right nowrap">
+          {% if m.origem == 'Manual' %}
+          <form method="post" action="{{ url_for('caixa_entrada_excluir', entrada_id=m.id) }}" style="display:inline" onsubmit="return confirm('Excluir esta entrada?');">
+            <button class="btn btn-small btn-secondary" type="submit">Excluir</button>
+          </form>
+          {% elif m.tipo == 'saida' %}
+          <form method="post" action="{{ url_for('caixa_saida_excluir', saida_id=m.id) }}" style="display:inline" onsubmit="return confirm('Excluir esta saída?');">
+            <button class="btn btn-small btn-secondary" type="submit">Excluir</button>
+          </form>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Nenhuma movimentação encontrada nesse período.</p>
+  {% endif %}
+</div>
+{% endblock %}
