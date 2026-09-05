@@ -29,11 +29,11 @@
   <h2 style="margin-top:0;">Modalidade de recebimento: Convênios</h2>
   {% if lancamentos %}
   <div style="overflow-x:auto;">
-  <table>
+  <table class="tabela-compacta">
     <thead>
       <tr>
-        <th>Nome convênio</th><th class="nowrap">Data</th><th class="nowrap">Nº Autorização</th>
-        <th class="nowrap">Data vcto.</th><th class="text-right nowrap">Valor</th><th class="nowrap">Data do recebimento</th>
+        <th>Convênio</th><th class="nowrap">Data</th><th class="nowrap">Nº Aut.</th>
+        <th class="nowrap">Vcto.</th><th class="text-right nowrap">Valor</th><th class="nowrap">Recebido em</th>
         {% if g.user.perfil == 'admin' %}<th></th>{% endif %}
       </tr>
     </thead>
@@ -47,11 +47,11 @@
         <td class="text-right nowrap">R$ {{ '%.2f'|format(l.valor) }}</td>
         <td class="nowrap">
           <form method="post" action="{{ url_for('contas_receber_lancar', conta_id=l.id) }}"
-                style="display:flex; align-items:center; gap:0.4rem;"
+                style="display:flex; align-items:center; gap:0.25rem;"
                 onsubmit="return confirm('Confirmar o recebimento e lançar no Caixa?');">
             <input type="date" name="data_recebimento" required
-                   style="padding:0.35rem 0.5rem; border:1px solid var(--border); border-radius:6px;">
-            <button class="btn btn-small" type="submit">Lançar no caixa</button>
+                   style="width:120px; padding:0.15rem 0.3rem; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
+            <button class="btn btn-small" type="submit">Lançar</button>
           </form>
         </td>
         {% if g.user.perfil == 'admin' %}
