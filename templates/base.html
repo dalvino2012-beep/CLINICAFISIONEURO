@@ -31,7 +31,7 @@
       <a class="{{ 'active' if p.startswith('/medicos') }}" href="{{ url_for('medicos_lista') }}">Médicos</a>
       <a class="{{ 'active' if p.startswith('/agenda') }}" href="{{ url_for('agenda_lista') }}">Agenda</a>
       <a class="{{ 'active' if p.startswith('/balcao') or p.startswith('/atendimento') }}" href="{{ url_for('balcao') }}">Balcão</a>
-      {% if g.user.perfil in ('admin', 'recepcao') %}
+      {% if g.user.perfil == 'admin' %}
       <a class="{{ 'active' if p.startswith('/caixa') }}" href="{{ url_for('caixa') }}">Caixa</a>
       {% endif %}
       <a href="{{ url_for('telao') }}" target="_blank">Telão</a>
