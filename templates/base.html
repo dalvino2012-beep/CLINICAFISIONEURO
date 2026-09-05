@@ -42,6 +42,7 @@
       <a class="nav-medicamento {{ 'active' if p.startswith('/medicamento-alto-custo') }}" href="{{ url_for('medicamento_alto_custo') }}"><span>Medicamento</span><span>Alto custo</span></a>
       <a class="{{ 'active' if p.startswith('/alterar-senha') }}" href="{{ url_for('alterar_senha') }}">Olá, {{ g.user.nome }}</a>
     </nav>
+    {% if p == '/' or p.startswith('/medicos') or p.startswith('/usuarios') %}
     <div class="ponto-bar">
       {% if g.ponto_proximo %}
       <form method="post" action="{{ url_for('ponto_bater') }}" style="margin:0;">
@@ -56,6 +57,7 @@
       {% endif %}
       {% endfor %}
     </div>
+    {% endif %}
   </div>
   {% endif %}
   <div class="container">
