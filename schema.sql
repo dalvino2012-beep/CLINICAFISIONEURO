@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS pacientes (
     cep TEXT,
     historico TEXT,
     observacoes TEXT,
+    tipo_atendimento TEXT DEFAULT 'particular',
+    convenio TEXT,
     criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

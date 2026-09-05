@@ -69,6 +69,8 @@ def init_db():
     add_col("pacientes", "cep", "TEXT")
     add_col("pacientes", "email", "TEXT")
     add_col("receitas", "impresso_em", "TEXT")
+    add_col("pacientes", "tipo_atendimento", "TEXT DEFAULT 'particular'")
+    add_col("pacientes", "convenio", "TEXT")
     conn.commit()
 
     if is_new:

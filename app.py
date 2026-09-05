@@ -439,9 +439,9 @@ def pacientes_novo():
         db = get_db()
         try:
             cur = db.execute(
-                """INSERT INTO pacientes (nome, cpf, data_nascimento, telefone, whatsapp, email, endereco, cep, historico, observacoes)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (dados["nome"], dados["cpf"], dados["data_nascimento"], dados["telefone"], dados["whatsapp"], dados["email"], dados["endereco"], dados["cep"], dados["historico"], dados["observacoes"]),
+                """INSERT INTO pacientes (nome, cpf, data_nascimento, telefone, whatsapp, email, endereco, cep, historico, observacoes, tipo_atendimento, convenio)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (dados["nome"], dados["cpf"], dados["data_nascimento"], dados["telefone"], dados["whatsapp"], dados["email"], dados["endereco"], dados["cep"], dados["historico"], dados["observacoes"], dados["tipo_atendimento"], dados["convenio"]),
             )
             novo_id = cur.lastrowid
             db.commit()
@@ -472,9 +472,9 @@ def pacientes_editar(paciente_id):
         dados = _ler_form_paciente()
         try:
             db.execute(
-                """UPDATE pacientes SET nome=?, cpf=?, data_nascimento=?, telefone=?, whatsapp=?, email=?, endereco=?, cep=?, historico=?, observacoes=?
+                """UPDATE pacientes SET nome=?, cpf=?, data_nascimento=?, telefone=?, whatsapp=?, email=?, endereco=?, cep=?, historico=?, observacoes=?, tipo_atendimento=?, convenio=?
                    WHERE id=?""",
-                (dados["nome"], dados["cpf"], dados["data_nascimento"], dados["telefone"], dados["whatsapp"], dados["email"], dados["endereco"], dados["cep"], dados["historico"], dados["observacoes"], paciente_id),
+                (dados["nome"], dados["cpf"], dados["data_nascimento"], dados["telefone"], dados["whatsapp"], dados["email"], dados["endereco"], dados["cep"], dados["historico"], dados["observacoes"], dados["tipo_atendimento"], dados["convenio"], paciente_id),
             )
             db.commit()
             _salvar_anexos(db, paciente_id)
@@ -1293,6 +1293,8 @@ def _ler_form_paciente():
         "cep": re.sub(r"\D", "", request.form.get("cep", "")),
         "historico": request.form.get("historico", "").strip(),
         "observacoes": request.form.get("observacoes", "").strip(),
+        "tipo_atendimento": request.form.get("tipo_atendimento", "particular").strip(),
+        "convenio": request.form.get("convenio", "").strip(),
     }
 
 

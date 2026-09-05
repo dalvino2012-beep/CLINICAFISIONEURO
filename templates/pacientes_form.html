@@ -72,6 +72,19 @@
                inputmode="numeric" placeholder="00000-000" maxlength="9">
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="tipo_atendimento">Tipo de atendimento</label>
+        <select id="tipo_atendimento" name="tipo_atendimento">
+          <option value="particular" {{ 'selected' if paciente and paciente.tipo_atendimento == 'particular' }}>Particular</option>
+          <option value="convenio" {{ 'selected' if paciente and paciente.tipo_atendimento == 'convenio' }}>Convênio</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="convenio">Convênio (se aplicável)</label>
+        <input type="text" id="convenio" name="convenio" value="{{ (paciente.convenio or '') if paciente else '' }}" placeholder="Nome do convênio">
+      </div>
+    </div>
     <div class="form-group">
       <label for="historico">Histórico clínico</label>
       <textarea id="historico" name="historico" rows="4">{{ paciente.historico if paciente else '' }}</textarea>
