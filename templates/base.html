@@ -29,11 +29,11 @@
       <a class="{{ 'active' if p.startswith('/minha-fila') }}" href="{{ url_for('minha_fila') }}">Minha fila</a>
       {% endif %}
       <a class="{{ 'active' if p.startswith('/medicos') }}" href="{{ url_for('medicos_lista') }}">Médicos</a>
-      <a class="{{ 'active' if p.startswith('/agenda') }}" href="{{ url_for('agenda_lista') }}">Agenda</a>
-      <a class="{{ 'active' if p.startswith('/balcao') or p.startswith('/atendimento') }}" href="{{ url_for('balcao') }}">Balcão</a>
       {% if g.user.perfil in ('admin', 'recepcao') %}
       <a class="{{ 'active' if p.startswith('/caixa') }}" href="{{ url_for('caixa') }}">Caixa</a>
       {% endif %}
+      <a class="{{ 'active' if p.startswith('/agenda') }}" href="{{ url_for('agenda_lista') }}">Agenda</a>
+      <a class="{{ 'active' if p.startswith('/balcao') or p.startswith('/atendimento') }}" href="{{ url_for('balcao') }}">Balcão</a>
       <a href="{{ url_for('telao') }}" target="_blank">Telão</a>
       {% if g.user.perfil == 'admin' %}
       <a class="{{ 'active' if p.startswith('/usuarios') }}" href="{{ url_for('usuarios_lista') }}">Usuários</a>
