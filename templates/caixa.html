@@ -42,7 +42,7 @@
       {% for m in movimentos %}
       <tr>
         <td class="nowrap">{{ m.data|data_br }}</td>
-        <td><span class="badge {{ 'badge-atendida' if m.tipo == 'entrada' else 'badge-cancelada' }}">{{ 'Entrada' if m.tipo == 'entrada' else 'Saída' }}</span></td>
+        <td><span class="badge badge-compact {{ 'badge-atendida' if m.tipo == 'entrada' else 'badge-cancelada' }}">{{ 'Entrada' if m.tipo == 'entrada' else 'Saída' }}</span></td>
         <td class="nowrap" title="{{ m.origem }}">{{ (m.origem[:12] + '…') if m.origem|length > 12 else m.origem }}</td>
         <td class="nowrap descricao-expandivel" title="Duplo clique para ver a descrição completa"
             data-full="{{ m.descricao }}" data-short="{{ (m.descricao[:35] + '…') if m.descricao|length > 35 else m.descricao }}"
