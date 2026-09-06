@@ -3423,8 +3423,8 @@ def usuarios_novo():
 def backup_agora():
     nome = fazer_backup()
     if nome:
-        flash(f"Backup criado com sucesso: {nome} (na pasta 'backups'). "
-              "Copie a pasta 'backups' para um pendrive ou nuvem para guardar fora do computador.", "success")
+        flash(f"Backup criado com sucesso: {nome} (na pasta 'backups' e copiado automaticamente "
+              "para o Google Drive).", "success")
     else:
         flash("Não foi possível criar o backup.", "error")
     return redirect(request.referrer or url_for("usuarios_lista"))

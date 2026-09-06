@@ -4,6 +4,18 @@ from pathlib import Path
 DB_PATH = Path(__file__).parent / "clinica.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 BACKUP_DIR = Path(__file__).parent / "backups"
+BACKUP_NUVEM_DIR = Path("G:/Meu Drive/Backups Fisioneuro")
+
+
+def _copiar_para_nuvem(origem):
+    """Copia um arquivo de backup para a pasta sincronizada do Google Drive, se disponível.
+    Nunca deixa a app quebrar por causa disso (pendrive/nuvem pode estar desconectado)."""
+    import shutil
+    try:
+        BACKUP_NUVEM_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(origem, BACKUP_NUVEM_DIR / origem.name)
+    except OSError:
+        pass
 
 
 def get_db():
@@ -25,7 +37,8 @@ def backup_diario():
         try:
             shutil.copy2(DB_PATH, destino)
         except OSError:
-            pass
+            return
+        _copiar_para_nuvem(destino)
 
 
 def fazer_backup():
@@ -44,6 +57,7 @@ def fazer_backup():
     finally:
         copia.close()
         origem.close()
+    _copiar_para_nuvem(destino)
     return nome
 
 
