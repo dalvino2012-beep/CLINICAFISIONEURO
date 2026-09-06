@@ -2155,7 +2155,8 @@ def _contas_receber_lista(modalidade):
     db = get_db()
     sql = """SELECT c.*, u.nome AS usuario_nome FROM contas_receber c
              LEFT JOIN usuarios u ON u.id = c.usuario_id
-             WHERE c.modalidade = ? AND c.lancado_em IS NULL AND c.data BETWEEN ? AND ?"""
+             WHERE c.modalidade = ? AND c.lancado_em IS NULL
+                   AND (c.data_vencimento IS NULL OR c.data_vencimento BETWEEN ? AND ?)"""
     params = [modalidade, inicio, fim]
     if busca:
         sql += " AND c.convenio LIKE ?"
