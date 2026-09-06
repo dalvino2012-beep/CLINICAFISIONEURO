@@ -64,7 +64,7 @@
                 onsubmit="return confirm('Confirmar o recebimento e lançar no Banco?');">
             <input type="date" name="data_recebimento" required
                    style="width:120px; padding:0.15rem 0.3rem; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
-            <select name="banco_id" required title="Banco (código)" style="width:70px; padding:0.15rem 0.15rem; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
+            <select name="banco_id" required title="Banco (código)" style="width:60px; text-align:center; padding:0.15rem 0.1rem; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
               <option value="" disabled selected>Banco</option>
               {% for b in bancos %}
               <option value="{{ b.id }}" title="{{ (b.codigo + ' - ') if b.codigo else '' }}{{ b.nome }}">{{ b.codigo or b.nome[:5] }}</option>
@@ -78,7 +78,7 @@
         <td class="text-right nowrap">
           <form method="post" action="{{ url_for('contas_receber_excluir', conta_id=l.id) }}" style="display:inline"
                 onsubmit="return confirm('Excluir este lançamento?');">
-            <button class="btn btn-small btn-secondary" type="submit">Excluir</button>
+            <button class="btn btn-small btn-secondary" type="submit" style="padding:0.1rem 0.4rem; font-size:0.72rem;">Excluir</button>
           </form>
         </td>
         {% endif %}
