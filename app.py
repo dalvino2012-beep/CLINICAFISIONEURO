@@ -2637,13 +2637,84 @@ def bancos_deposito(banco_id):
     return render_template("bancos_deposito_form.html", banco=banco, hoje=date.today().isoformat())
 
 
+@app.route("/bancos/<int:banco_id>/saida", methods=["GET", "POST"])
+@caixa_required
+def bancos_saida(banco_id):
+    db = get_db()
+    banco = db.execute("SELECT * FROM bancos WHERE id = ? AND ativo = 1", (banco_id,)).fetchone()
+    if banco is None:
+        db.close()
+        flash("Banco não encontrado ou inativo.", "error")
+        return redirect(url_for("bancos_lista"))
+    if request.method == "POST":
+        data_ = request.form.get("data", "").strip() or date.today().isoformat()
+        descricao = request.form.get("descricao", "").strip()
+        categoria = request.form.get("categoria", "").strip()
+        valor = request.form.get("valor", "").replace(",", ".").strip()
+        try:
+            valor = float(valor)
+        except ValueError:
+            valor = None
+        if not descricao or not valor:
+            db.close()
+            flash("Preencha a descrição e um valor válido.", "error")
+            return redirect(url_for("bancos_saida", banco_id=banco_id))
+        db.execute(
+            """INSERT INTO caixa_saidas (data, descricao, categoria, valor, forma_pagamento, banco_id, usuario_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (data_, descricao, categoria, valor, "Transferência", banco_id, g.user["id"]),
+        )
+        db.commit()
+        db.close()
+        flash("Saída registrada no banco.", "success")
+        return redirect(url_for("bancos_extrato", banco_id=banco_id))
+    db.close()
+    return render_template("bancos_saida_form.html", banco=banco, hoje=date.today().isoformat())
+
+
+def _bancos_extrato_dados(banco_id, inicio, fim):
+    db = get_db()
+    entradas = db.execute(
+        """SELECT data, descricao, valor, criado_em FROM caixa_entradas
+           WHERE banco_id = ? AND data BETWEEN ? AND ?""",
+        (banco_id, inicio, fim),
+    ).fetchall()
+    saidas = db.execute(
+        """SELECT data, descricao, valor, criado_em FROM caixa_saidas
+           WHERE banco_id = ? AND data BETWEEN ? AND ?""",
+        (banco_id, inicio, fim),
+    ).fetchall()
+    db.close()
+
+    brutos = []
+    for e in entradas:
+        brutos.append({"data": e["data"], "criado_em": e["criado_em"], "historico": e["descricao"], "entrada": e["valor"], "saida": None})
+    for s in saidas:
+        brutos.append({"data": s["data"], "criado_em": s["criado_em"], "historico": s["descricao"], "entrada": None, "saida": s["valor"]})
+    brutos.sort(key=lambda m: (m["data"], m["criado_em"]))
+
+    saldo = 0.0
+    total_entradas = 0.0
+    total_saidas = 0.0
+    movimentos = []
+    for m in brutos:
+        if m["entrada"]:
+            saldo += m["entrada"]
+            total_entradas += m["entrada"]
+        if m["saida"]:
+            saldo -= m["saida"]
+            total_saidas += m["saida"]
+        movimentos.append({**m, "saldo": saldo})
+    return movimentos, total_entradas, total_saidas, saldo
+
+
 @app.route("/bancos/<int:banco_id>/extrato")
 @caixa_required
 def bancos_extrato(banco_id):
     db = get_db()
     banco = db.execute("SELECT * FROM bancos WHERE id = ?", (banco_id,)).fetchone()
+    db.close()
     if banco is None:
-        db.close()
         flash("Banco não encontrado.", "error")
         return redirect(url_for("bancos_lista"))
     hoje = date.today()
@@ -2651,27 +2722,10 @@ def bancos_extrato(banco_id):
     fim = request.args.get("fim", "").strip() or hoje.isoformat()
     if fim < inicio:
         inicio, fim = fim, inicio
-    entradas = db.execute(
-        """SELECT data, descricao, valor, criado_em FROM caixa_entradas
-           WHERE banco_id = ? AND data BETWEEN ? AND ?
-           ORDER BY data, criado_em""",
-        (banco_id, inicio, fim),
-    ).fetchall()
-    db.close()
-
-    saldo = 0.0
-    total_entradas = 0.0
-    movimentos = []
-    for e in entradas:
-        saldo += e["valor"]
-        total_entradas += e["valor"]
-        movimentos.append({
-            "data": e["data"], "historico": e["descricao"], "entrada": e["valor"], "saida": None, "saldo": saldo,
-        })
-
+    movimentos, total_entradas, total_saidas, saldo = _bancos_extrato_dados(banco_id, inicio, fim)
     return render_template(
         "bancos_extrato.html", banco=banco, movimentos=movimentos,
-        total_entradas=total_entradas, total_saidas=0.0, saldo=saldo,
+        total_entradas=total_entradas, total_saidas=total_saidas, saldo=saldo,
         inicio=inicio, fim=fim,
     )
 

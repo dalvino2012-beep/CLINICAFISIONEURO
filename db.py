@@ -76,6 +76,7 @@ def init_db():
     add_col("contas_receber", "hora", "TEXT")
     add_col("contas_receber", "bandeira", "TEXT")
     add_col("caixa_entradas", "banco_id", "INTEGER")
+    add_col("caixa_saidas", "banco_id", "INTEGER")
     conn.commit()
 
     if is_new:

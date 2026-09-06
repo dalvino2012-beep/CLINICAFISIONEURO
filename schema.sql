@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS caixa_saidas (
     categoria TEXT,
     valor REAL NOT NULL,
     forma_pagamento TEXT,
+    banco_id INTEGER REFERENCES bancos(id),
     usuario_id INTEGER REFERENCES usuarios(id),
     criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
