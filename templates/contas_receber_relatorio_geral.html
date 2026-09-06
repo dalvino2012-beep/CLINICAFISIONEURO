@@ -39,7 +39,7 @@
     <tbody>
       {% for l in lancamentos %}
       <tr>
-        <td class="nowrap" style="{{ 'color:#b42318; font-weight:600;' if l.data_vencimento and l.data_vencimento < hoje else '' }}">
+        <td class="nowrap" style="{{ 'color:#b42318; font-weight:700; font-size:1.05rem;' if l.data_vencimento and l.data_vencimento < hoje else '' }}">
           {{ l.data_vencimento|data_br if l.data_vencimento else '-' }}
         </td>
         <td class="nowrap">{{ 'Cartão de Crédito' if l.modalidade == 'cartao' else 'Convênio' }}</td>
