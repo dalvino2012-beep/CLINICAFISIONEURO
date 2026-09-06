@@ -3,6 +3,12 @@
 {% block content %}
 <h1>Contas a Receber</h1>
 
+<div class="actions" style="margin-bottom:0.8rem;">
+  {% for mod, m_info in modalidades.items() %}
+  <a class="btn {{ 'btn-secondary' if mod != modalidade }}" href="{{ url_for(m_info.endpoint_lista) }}">{{ m_info.label }}</a>
+  {% endfor %}
+</div>
+
 <div class="card" style="background:#eaf3f0; border-color:#bcd;">
   <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
     <label for="inicio" style="margin:0; font-weight:600; color:var(--primary-dark);">Período:</label>
@@ -11,7 +17,7 @@
     <span>até</span>
     <input type="date" id="fim" name="fim" value="{{ fim }}" onchange="this.form.submit()"
            style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
-    <input type="text" name="convenio" value="{{ convenio_filtro }}" placeholder="Filtrar por convênio"
+    <input type="text" name="busca" value="{{ busca }}" placeholder="Filtrar por {{ info.campo_label|lower }}"
            style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
     <button class="btn btn-small" type="submit">Filtrar</button>
   </form>
@@ -22,17 +28,20 @@
 </div>
 
 <div class="actions caixa-acoes">
-  <a class="btn" href="{{ url_for('contas_receber_nova') }}">+ Novo lançamento</a>
+  <a class="btn" href="{{ url_for(info.endpoint_nova) }}">+ Novo lançamento</a>
 </div>
 
 <div class="card">
-  <h2 style="margin-top:0;">Modalidade de recebimento: Convênios</h2>
+  <h2 style="margin-top:0;">Modalidade de recebimento: {{ info.label }}</h2>
   {% if lancamentos %}
   <div style="overflow-x:auto;">
   <table class="tabela-compacta">
     <thead>
       <tr>
-        <th>Convênio</th><th class="nowrap">Data</th><th class="nowrap">Nº Aut.</th>
+        {% if info.mostra_bandeira %}<th class="nowrap">Cartão</th>{% endif %}
+        <th>{{ info.campo_label }}</th><th class="nowrap">Data</th>
+        {% if info.mostra_bandeira %}<th class="nowrap">Hora</th>{% endif %}
+        {% if info.mostra_autorizacao %}<th class="nowrap">Nº Aut.</th>{% endif %}
         <th class="nowrap">Vcto.</th><th class="text-right nowrap">Valor</th><th class="nowrap">Recebido em</th>
         {% if g.user.perfil == 'admin' %}<th></th>{% endif %}
       </tr>
@@ -40,9 +49,11 @@
     <tbody>
       {% for l in lancamentos %}
       <tr>
+        {% if info.mostra_bandeira %}<td class="nowrap">{{ l.bandeira or '-' }}</td>{% endif %}
         <td>{{ l.convenio }}</td>
         <td class="nowrap">{{ l.data|data_br }}</td>
-        <td class="nowrap">{{ l.autorizacao or '-' }}</td>
+        {% if info.mostra_bandeira %}<td class="nowrap">{{ l.hora or '-' }}</td>{% endif %}
+        {% if info.mostra_autorizacao %}<td class="nowrap">{{ l.autorizacao or '-' }}</td>{% endif %}
         <td class="nowrap">{{ l.data_vencimento|data_br if l.data_vencimento else '-' }}</td>
         <td class="text-right nowrap">R$ {{ '%.2f'|format(l.valor) }}</td>
         <td class="nowrap">

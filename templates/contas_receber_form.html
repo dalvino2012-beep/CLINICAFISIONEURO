@@ -1,26 +1,46 @@
 {% extends "base.html" %}
 {% block title %}Novo Lançamento - Contas a Receber{% endblock %}
 {% block content %}
-<h1>Novo lançamento (Contas a Receber)</h1>
+<h1>Novo lançamento — {{ info.label }}</h1>
 <div class="card">
   <form method="post">
     <div class="form-row">
+      {% if info.mostra_bandeira %}
       <div class="form-group">
-        <label for="convenio">Nome convênio</label>
-        <input type="text" id="convenio" name="convenio" placeholder="Ex.: Unimed, Bradesco Saúde" required>
+        <label for="bandeira">Cartão</label>
+        <select id="bandeira" name="bandeira">
+          {% for b in bandeiras %}
+          <option value="{{ b }}">{{ b }}</option>
+          {% endfor %}
+        </select>
       </div>
+      {% endif %}
       <div class="form-group">
-        <label for="data">Data</label>
-        <input type="date" id="data" name="data" value="{{ hoje }}" required>
+        <label for="convenio">{{ info.campo_label }}</label>
+        <input type="text" id="convenio" name="convenio" placeholder="{{ info.placeholder }}" required>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label for="data">Data</label>
+        <input type="date" id="data" name="data" value="{{ hoje }}" required>
+      </div>
+      {% if info.mostra_bandeira %}
+      <div class="form-group">
+        <label for="hora">Hora</label>
+        <input type="time" id="hora" name="hora">
+      </div>
+      {% endif %}
+      {% if info.mostra_autorizacao %}
+      <div class="form-group">
         <label for="autorizacao">Nº Autorização</label>
         <input type="text" id="autorizacao" name="autorizacao">
       </div>
+      {% endif %}
+    </div>
+    <div class="form-row">
       <div class="form-group">
-        <label for="data_vencimento">Data de vencimento</label>
+        <label for="data_vencimento">Vencimento</label>
         <input type="date" id="data_vencimento" name="data_vencimento">
       </div>
       <div class="form-group">
@@ -29,7 +49,7 @@
       </div>
     </div>
     <button type="submit" class="btn">Salvar</button>
-    <a class="btn btn-secondary" href="{{ url_for('contas_receber') }}">Cancelar</a>
+    <a class="btn btn-secondary" href="{{ url_for(info.endpoint_lista) }}">Cancelar</a>
   </form>
 </div>
 {% endblock %}

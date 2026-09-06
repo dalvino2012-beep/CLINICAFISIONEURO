@@ -72,6 +72,9 @@ def init_db():
     add_col("pacientes", "tipo_atendimento", "TEXT DEFAULT 'particular'")
     add_col("pacientes", "convenio", "TEXT")
     add_col("contas_receber", "data_recebimento", "TEXT")
+    add_col("contas_receber", "modalidade", "TEXT DEFAULT 'convenio'")
+    add_col("contas_receber", "hora", "TEXT")
+    add_col("contas_receber", "bandeira", "TEXT")
     conn.commit()
 
     if is_new:

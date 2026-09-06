@@ -133,11 +133,14 @@ CREATE TABLE IF NOT EXISTS caixa_saidas (
 
 CREATE TABLE IF NOT EXISTS contas_receber (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    modalidade TEXT NOT NULL DEFAULT 'convenio',
     convenio TEXT NOT NULL,
     data TEXT NOT NULL,
     autorizacao TEXT,
     data_vencimento TEXT,
     valor REAL NOT NULL,
+    hora TEXT,
+    bandeira TEXT,
     data_recebimento TEXT,
     lancado_em TEXT,
     usuario_id INTEGER REFERENCES usuarios(id),

@@ -2116,46 +2116,73 @@ def caixa_saida_excluir(saida_id):
     return redirect(url_for("caixa"))
 
 
-# ---------- Contas a Receber (convênios) ----------
+# ---------- Contas a Receber (convênios e cartão de crédito) ----------
 
-@app.route("/contas-receber")
-@caixa_required
-def contas_receber():
+CONTAS_RECEBER_MODALIDADES = {
+    "convenio": {
+        "label": "Convênio",
+        "campo_label": "Nome convênio",
+        "placeholder": "Ex.: Unimed, Bradesco Saúde",
+        "forma_pagamento": "Convênio",
+        "endpoint_lista": "contas_receber",
+        "endpoint_nova": "contas_receber_nova",
+        "mostra_autorizacao": True,
+        "mostra_bandeira": False,
+    },
+    "cartao": {
+        "label": "Cartão de Crédito",
+        "campo_label": "Paciente",
+        "placeholder": "Nome do paciente que pagou no cartão",
+        "forma_pagamento": "Cartão de crédito",
+        "endpoint_lista": "contas_receber_cartao",
+        "endpoint_nova": "contas_receber_cartao_nova",
+        "mostra_autorizacao": False,
+        "mostra_bandeira": True,
+    },
+}
+
+BANDEIRAS_CARTAO = ["Visa", "Mastercard", "Elo", "American Express", "Hipercard", "Outro"]
+
+
+def _contas_receber_lista(modalidade):
+    info = CONTAS_RECEBER_MODALIDADES[modalidade]
     hoje = date.today()
     inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
     fim = request.args.get("fim", "").strip() or hoje.isoformat()
     if fim < inicio:
         inicio, fim = fim, inicio
-    convenio_filtro = request.args.get("convenio", "").strip()
+    busca = request.args.get("busca", "").strip()
     db = get_db()
     sql = """SELECT c.*, u.nome AS usuario_nome FROM contas_receber c
              LEFT JOIN usuarios u ON u.id = c.usuario_id
-             WHERE c.lancado_em IS NULL AND c.data BETWEEN ? AND ?"""
-    params = [inicio, fim]
-    if convenio_filtro:
+             WHERE c.modalidade = ? AND c.lancado_em IS NULL AND c.data BETWEEN ? AND ?"""
+    params = [modalidade, inicio, fim]
+    if busca:
         sql += " AND c.convenio LIKE ?"
-        params.append(f"%{convenio_filtro}%")
+        params.append(f"%{busca}%")
     sql += " ORDER BY c.data_vencimento IS NULL, c.data_vencimento, c.data"
     lancamentos = db.execute(sql, params).fetchall()
     db.close()
     total = sum(l["valor"] for l in lancamentos)
     return render_template(
         "contas_receber.html", lancamentos=lancamentos, total=total,
-        inicio=inicio, fim=fim, convenio_filtro=convenio_filtro,
+        inicio=inicio, fim=fim, busca=busca, modalidade=modalidade, info=info,
+        modalidades=CONTAS_RECEBER_MODALIDADES,
     )
 
 
-@app.route("/contas-receber/nova", methods=["GET", "POST"])
-@caixa_required
-def contas_receber_nova():
+def _contas_receber_nova(modalidade):
+    info = CONTAS_RECEBER_MODALIDADES[modalidade]
     if request.method == "POST":
-        convenio = request.form.get("convenio", "").strip()
+        identificacao = request.form.get("convenio", "").strip()
         data_ = request.form.get("data", "").strip() or date.today().isoformat()
+        hora = request.form.get("hora", "").strip()
+        bandeira = request.form.get("bandeira", "").strip()
         autorizacao = request.form.get("autorizacao", "").strip()
         data_vencimento = request.form.get("data_vencimento", "").strip()
         valor = request.form.get("valor", "").replace(",", ".").strip()
-        if not convenio or not valor:
-            flash("Preencha o nome do convênio e o valor.", "error")
+        if not identificacao or not valor:
+            flash(f"Preencha {info['campo_label'].lower()} e o valor.", "error")
         else:
             try:
                 valor = float(valor)
@@ -2166,15 +2193,43 @@ def contas_receber_nova():
             else:
                 db = get_db()
                 db.execute(
-                    """INSERT INTO contas_receber (convenio, data, autorizacao, data_vencimento, valor, usuario_id)
-                       VALUES (?, ?, ?, ?, ?, ?)""",
-                    (convenio, data_, autorizacao, data_vencimento, valor, g.user["id"]),
+                    """INSERT INTO contas_receber
+                       (modalidade, convenio, data, hora, bandeira, autorizacao, data_vencimento, valor, usuario_id)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (modalidade, identificacao, data_, hora, bandeira, autorizacao, data_vencimento, valor, g.user["id"]),
                 )
                 db.commit()
                 db.close()
-                flash("Lançamento de contas a receber registrado.", "success")
-                return redirect(url_for("contas_receber"))
-    return render_template("contas_receber_form.html", hoje=date.today().isoformat())
+                flash("Lançamento registrado.", "success")
+                return redirect(url_for(info["endpoint_lista"]))
+    return render_template(
+        "contas_receber_form.html", hoje=date.today().isoformat(), modalidade=modalidade, info=info,
+        bandeiras=BANDEIRAS_CARTAO,
+    )
+
+
+@app.route("/contas-receber")
+@caixa_required
+def contas_receber():
+    return _contas_receber_lista("convenio")
+
+
+@app.route("/contas-receber/nova", methods=["GET", "POST"])
+@caixa_required
+def contas_receber_nova():
+    return _contas_receber_nova("convenio")
+
+
+@app.route("/contas-receber/cartao")
+@caixa_required
+def contas_receber_cartao():
+    return _contas_receber_lista("cartao")
+
+
+@app.route("/contas-receber/cartao/nova", methods=["GET", "POST"])
+@caixa_required
+def contas_receber_cartao_nova():
+    return _contas_receber_nova("cartao")
 
 
 @app.route("/contas-receber/<int:conta_id>/lancar-caixa", methods=["POST"])
@@ -2186,22 +2241,25 @@ def contas_receber_lancar(conta_id):
         db.close()
         flash("Lançamento não encontrado.", "error")
         return redirect(url_for("contas_receber"))
+    info = CONTAS_RECEBER_MODALIDADES.get(conta["modalidade"] or "convenio", CONTAS_RECEBER_MODALIDADES["convenio"])
     if conta["lancado_em"]:
         db.close()
         flash("Este lançamento já havia sido enviado ao caixa.", "error")
-        return redirect(url_for("contas_receber"))
+        return redirect(url_for(info["endpoint_lista"]))
     data_recebimento = request.form.get("data_recebimento", "").strip()
     if not data_recebimento:
         db.close()
         flash("Informe a data do recebimento para lançar no caixa.", "error")
-        return redirect(url_for("contas_receber"))
-    descricao = f"Convênio {conta['convenio']}"
+        return redirect(url_for(info["endpoint_lista"]))
+    descricao = f"{info['label']}: {conta['convenio']}"
     if conta["autorizacao"]:
         descricao += f" (aut. {conta['autorizacao']})"
+    if conta["bandeira"]:
+        descricao += f" ({conta['bandeira']})"
     db.execute(
         """INSERT INTO caixa_entradas (data, descricao, valor, forma_pagamento, usuario_id)
            VALUES (?, ?, ?, ?, ?)""",
-        (data_recebimento, descricao, conta["valor"], "Convênio", g.user["id"]),
+        (data_recebimento, descricao, conta["valor"], info["forma_pagamento"], g.user["id"]),
     )
     db.execute(
         "UPDATE contas_receber SET data_recebimento = ?, lancado_em = datetime('now','localtime') WHERE id = ?",
@@ -2210,18 +2268,20 @@ def contas_receber_lancar(conta_id):
     db.commit()
     db.close()
     flash("Recebimento lançado no Caixa e baixado de Contas a Receber.", "success")
-    return redirect(url_for("contas_receber"))
+    return redirect(url_for(info["endpoint_lista"]))
 
 
 @app.route("/contas-receber/<int:conta_id>/excluir", methods=["POST"])
 @admin_required
 def contas_receber_excluir(conta_id):
     db = get_db()
+    conta = db.execute("SELECT modalidade FROM contas_receber WHERE id = ?", (conta_id,)).fetchone()
+    info = CONTAS_RECEBER_MODALIDADES.get((conta["modalidade"] if conta else None) or "convenio", CONTAS_RECEBER_MODALIDADES["convenio"])
     db.execute("DELETE FROM contas_receber WHERE id = ?", (conta_id,))
     db.commit()
     db.close()
     flash("Lançamento excluído.", "success")
-    return redirect(url_for("contas_receber"))
+    return redirect(url_for(info["endpoint_lista"]))
 
 
 # ---------- Contas a Pagar ----------
