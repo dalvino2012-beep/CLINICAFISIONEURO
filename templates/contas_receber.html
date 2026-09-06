@@ -29,7 +29,8 @@
 
 <div class="actions caixa-acoes">
   <a class="btn" href="{{ url_for(info.endpoint_nova) }}">+ Novo lançamento</a>
-  <a class="btn btn-secondary" href="{{ url_for('contas_receber_relatorios') }}">📊 Relatórios</a>
+  <a class="btn btn-secondary" href="{{ url_for('contas_receber_relatorio', modalidade=modalidade, status='aberto') }}">📋 Relatório: Em Aberto</a>
+  <a class="btn btn-secondary" href="{{ url_for('contas_receber_relatorio', modalidade=modalidade, status='liquidado') }}">✅ Relatório: Liquidados</a>
 </div>
 
 <div class="card">

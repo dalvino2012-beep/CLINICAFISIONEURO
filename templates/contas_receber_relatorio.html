@@ -61,6 +61,6 @@
 </div>
 
 <div class="actions">
-  <a class="btn btn-secondary" href="{{ url_for('contas_receber_relatorios') }}">← Voltar aos Relatórios</a>
+  <a class="btn btn-secondary" href="{{ url_for(info.endpoint_lista) }}">← Voltar a {{ info.label }}</a>
 </div>
 {% endblock %}
