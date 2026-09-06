@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Relatório Geral - Contas a Receber{% endblock %}
+{% block content %}
+<h1>Relatório Geral de Contas a Receber</h1>
+<p class="muted" style="margin-top:-0.6rem;">Convênio e Cartão de Crédito juntos, em aberto, ordenados por data de vencimento.</p>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <label for="inicio" style="margin:0; font-weight:600; color:var(--primary-dark);">Período (vencimento):</label>
+    <input type="date" id="inicio" name="inicio" value="{{ inicio }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <span>até</span>
+    <input type="date" id="fim" name="fim" value="{{ fim }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <button class="btn btn-small" type="submit">Filtrar</button>
+  </form>
+</div>
+
+<div class="grid-stats caixa-valores">
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(total) }}</div><div class="label">Total em aberto no período</div></div>
+</div>
+
+<div class="card">
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;">
+    <h2 style="margin:0;">{{ inicio|data_br }} até {{ fim|data_br }}</h2>
+    <a class="btn btn-small btn-secondary"
+       href="{{ url_for('contas_receber_relatorio_geral_exportar', inicio=inicio, fim=fim) }}">⬇ Exportar para Excel</a>
+  </div>
+  {% if lancamentos %}
+  <div style="overflow-x:auto;">
+  <table class="tabela-compacta">
+    <thead>
+      <tr>
+        <th class="nowrap">Vcto.</th><th class="nowrap">Modalidade</th><th>Convênio / Paciente</th>
+        <th class="nowrap">Data</th><th class="nowrap">Nº Aut.</th><th class="nowrap">Bandeira</th>
+        <th class="text-right nowrap">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in lancamentos %}
+      <tr>
+        <td class="nowrap" style="{{ 'color:#b42318; font-weight:600;' if l.data_vencimento and l.data_vencimento < hoje else '' }}">
+          {{ l.data_vencimento|data_br if l.data_vencimento else '-' }}
+        </td>
+        <td class="nowrap">{{ 'Cartão de Crédito' if l.modalidade == 'cartao' else 'Convênio' }}</td>
+        <td>{{ l.convenio }}</td>
+        <td class="nowrap">{{ l.data|data_br }}</td>
+        <td class="nowrap">{{ l.autorizacao or '-' }}</td>
+        <td class="nowrap">{{ l.bandeira or '-' }}</td>
+        <td class="text-right nowrap">R$ {{ '%.2f'|format(l.valor) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Nenhum lançamento encontrado nesse período.</p>
+  {% endif %}
+</div>
+
+<div class="actions">
+  <a class="btn btn-secondary" href="{{ url_for('contas_receber') }}">← Voltar a Contas a Receber</a>
+</div>
+{% endblock %}

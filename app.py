@@ -2294,6 +2294,61 @@ def contas_receber_excluir(conta_id):
     return redirect(url_for(info["endpoint_lista"]))
 
 
+# ---------- Contas a Receber: Relatório Geral (todas as modalidades, por vencimento) ----------
+
+def _contas_receber_geral_dados():
+    hoje = date.today()
+    inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
+    fim = request.args.get("fim", "").strip() or hoje.isoformat()
+    if fim < inicio:
+        inicio, fim = fim, inicio
+    db = get_db()
+    lancamentos = db.execute(
+        """SELECT c.* FROM contas_receber c
+           WHERE c.lancado_em IS NULL
+                 AND (c.data_vencimento IS NULL OR c.data_vencimento BETWEEN ? AND ?)
+           ORDER BY c.data_vencimento IS NULL, c.data_vencimento, c.data""",
+        (inicio, fim),
+    ).fetchall()
+    db.close()
+    total = sum(l["valor"] for l in lancamentos)
+    return lancamentos, total, inicio, fim
+
+
+@app.route("/contas-receber/relatorios/geral")
+@caixa_required
+def contas_receber_relatorio_geral():
+    lancamentos, total, inicio, fim = _contas_receber_geral_dados()
+    return render_template(
+        "contas_receber_relatorio_geral.html", lancamentos=lancamentos, total=total, inicio=inicio, fim=fim,
+        modalidades=CONTAS_RECEBER_MODALIDADES, hoje=date.today().isoformat(),
+    )
+
+
+@app.route("/contas-receber/relatorios/geral/exportar")
+@caixa_required
+def contas_receber_relatorio_geral_exportar():
+    lancamentos, total, inicio, fim = _contas_receber_geral_dados()
+    cabecalhos = ["Vencimento", "Modalidade", "Convênio / Paciente", "Data", "Nº Autorização", "Bandeira", "Valor (R$)"]
+    linhas = []
+    for l in lancamentos:
+        info = CONTAS_RECEBER_MODALIDADES.get(l["modalidade"] or "convenio", CONTAS_RECEBER_MODALIDADES["convenio"])
+        linhas.append([
+            _data_iso_para_br(l["data_vencimento"]) if l["data_vencimento"] else "-",
+            info["label"], l["convenio"], _data_iso_para_br(l["data"]),
+            l["autorizacao"] or "-", l["bandeira"] or "-", round(l["valor"], 2),
+        ])
+    linhas.append(["", "", "", "", "", "Total", round(total, 2)])
+    xlsx = _gerar_xlsx_simples("Geral - Em Aberto", cabecalhos, linhas)
+    from flask import Response
+    nome_arquivo = f"contas_receber_geral_{inicio}_a_{fim}.xlsx"
+    return Response(
+        xlsx,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={nome_arquivo}"},
+    )
+
+
 # ---------- Contas a Receber: Relatórios (por modalidade, separados) ----------
 
 @app.route("/contas-receber/relatorios")

@@ -7,6 +7,7 @@
   {% for mod, m_info in modalidades.items() %}
   <a class="btn {{ 'btn-secondary' if mod != modalidade }}" href="{{ url_for(m_info.endpoint_lista) }}">{{ m_info.label }}</a>
   {% endfor %}
+  <a class="btn btn-secondary" href="{{ url_for('contas_receber_relatorio_geral') }}">📈 Relatório Geral</a>
 </div>
 
 <div class="card" style="background:#eaf3f0; border-color:#bcd;">
