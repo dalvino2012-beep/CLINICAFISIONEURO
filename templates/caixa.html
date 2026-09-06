@@ -34,18 +34,20 @@
   </div>
   {% if movimentos %}
   <div style="overflow-x:auto;">
-  <table>
+  <table class="tabela-compacta">
     <thead>
-      <tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Descrição</th><th class="nowrap">Forma de pagamento</th><th class="text-right">Valor</th>{% if g.user.perfil == 'admin' %}<th></th>{% endif %}</tr>
+      <tr><th class="nowrap">Data</th><th class="nowrap">Tipo</th><th class="nowrap">Origem</th><th>Descrição</th><th class="nowrap"><div style="line-height:1.1; text-align:center;">Forma de<br>Pagamento</div></th><th class="text-right nowrap">Valor</th>{% if g.user.perfil == 'admin' %}<th></th>{% endif %}</tr>
     </thead>
     <tbody>
       {% for m in movimentos %}
       <tr>
         <td class="nowrap">{{ m.data|data_br }}</td>
         <td><span class="badge {{ 'badge-atendida' if m.tipo == 'entrada' else 'badge-cancelada' }}">{{ 'Entrada' if m.tipo == 'entrada' else 'Saída' }}</span></td>
-        <td>{{ m.origem }}</td>
-        <td>{{ m.descricao }}</td>
-        <td class="nowrap">{{ m.forma_pagamento or '-' }}</td>
+        <td class="nowrap" title="{{ m.origem }}">{{ (m.origem[:12] + '…') if m.origem|length > 12 else m.origem }}</td>
+        <td class="nowrap descricao-expandivel" title="Duplo clique para ver a descrição completa"
+            data-full="{{ m.descricao }}" data-short="{{ (m.descricao[:35] + '…') if m.descricao|length > 35 else m.descricao }}"
+            ondblclick="toggleDescricao(this)">{{ (m.descricao[:35] + '…') if m.descricao|length > 35 else m.descricao }}</td>
+        <td class="nowrap" title="{{ m.forma_pagamento or '' }}">{{ ((m.forma_pagamento[:12] + '…') if m.forma_pagamento|length > 12 else m.forma_pagamento) if m.forma_pagamento else '-' }}</td>
         <td class="text-right nowrap" style="{{ 'color:#b42318;' if m.tipo == 'saida' else '' }}">
           {{ '-' if m.tipo == 'saida' else '' }}R$ {{ '%.2f'|format(m.valor) }}
         </td>
@@ -71,4 +73,11 @@
   <p class="muted">Nenhuma movimentação encontrada nesse período.</p>
   {% endif %}
 </div>
+<script>
+  function toggleDescricao(el) {
+    var expandido = el.classList.toggle('expandido');
+    el.textContent = expandido ? el.dataset.full : el.dataset.short;
+    el.classList.toggle('nowrap', !expandido);
+  }
+</script>
 {% endblock %}
