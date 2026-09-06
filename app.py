@@ -2163,12 +2163,13 @@ def _contas_receber_lista(modalidade):
         params.append(f"%{busca}%")
     sql += " ORDER BY c.data_vencimento IS NULL, c.data_vencimento, c.data"
     lancamentos = db.execute(sql, params).fetchall()
+    bancos = db.execute("SELECT * FROM bancos WHERE ativo = 1 ORDER BY nome").fetchall()
     db.close()
     total = sum(l["valor"] for l in lancamentos)
     return render_template(
         "contas_receber.html", lancamentos=lancamentos, total=total,
         inicio=inicio, fim=fim, busca=busca, modalidade=modalidade, info=info,
-        modalidades=CONTAS_RECEBER_MODALIDADES,
+        modalidades=CONTAS_RECEBER_MODALIDADES, bancos=bancos,
     )
 
 
@@ -2248,19 +2249,26 @@ def contas_receber_lancar(conta_id):
         flash("Este lançamento já havia sido enviado ao caixa.", "error")
         return redirect(url_for(info["endpoint_lista"]))
     data_recebimento = request.form.get("data_recebimento", "").strip()
-    if not data_recebimento:
+    banco_id = request.form.get("banco_id", "").strip()
+    if not data_recebimento or not banco_id:
         db.close()
-        flash("Informe a data do recebimento para lançar no caixa.", "error")
+        flash("Informe a data do recebimento e o banco para lançar.", "error")
+        return redirect(url_for(info["endpoint_lista"]))
+    banco = db.execute("SELECT * FROM bancos WHERE id = ?", (banco_id,)).fetchone()
+    if banco is None:
+        db.close()
+        flash("Banco inválido.", "error")
         return redirect(url_for(info["endpoint_lista"]))
     descricao = f"{info['label']}: {conta['convenio']}"
     if conta["autorizacao"]:
         descricao += f" (aut. {conta['autorizacao']})"
     if conta["bandeira"]:
         descricao += f" ({conta['bandeira']})"
+    descricao += f" — Banco {banco['codigo'] + ' ' if banco['codigo'] else ''}{banco['nome']}"
     db.execute(
-        """INSERT INTO caixa_entradas (data, descricao, valor, forma_pagamento, usuario_id)
-           VALUES (?, ?, ?, ?, ?)""",
-        (data_recebimento, descricao, conta["valor"], info["forma_pagamento"], g.user["id"]),
+        """INSERT INTO caixa_entradas (data, descricao, valor, forma_pagamento, banco_id, usuario_id)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (data_recebimento, descricao, conta["valor"], info["forma_pagamento"], banco_id, g.user["id"]),
     )
     db.execute(
         "UPDATE contas_receber SET data_recebimento = ?, lancado_em = datetime('now','localtime') WHERE id = ?",
@@ -2268,7 +2276,7 @@ def contas_receber_lancar(conta_id):
     )
     db.commit()
     db.close()
-    flash("Recebimento lançado no Caixa e baixado de Contas a Receber.", "success")
+    flash("Recebimento lançado no Banco e baixado de Contas a Receber.", "success")
     return redirect(url_for(info["endpoint_lista"]))
 
 
@@ -2437,6 +2445,82 @@ def contas_pagar_excluir(conta_id):
     db.close()
     flash("Conta a pagar excluída.", "success")
     return redirect(url_for("contas_pagar"))
+
+
+# ---------- Bancos ----------
+
+def _ler_form_banco():
+    return {
+        "nome": request.form.get("nome", "").strip(),
+        "codigo": request.form.get("codigo", "").strip(),
+        "agencia": request.form.get("agencia", "").strip(),
+        "conta": request.form.get("conta", "").strip(),
+    }
+
+
+@app.route("/bancos")
+@caixa_required
+def bancos_lista():
+    db = get_db()
+    bancos = db.execute("SELECT * FROM bancos ORDER BY nome").fetchall()
+    db.close()
+    return render_template("bancos_lista.html", bancos=bancos)
+
+
+@app.route("/bancos/novo", methods=["GET", "POST"])
+@admin_required
+def bancos_novo():
+    if request.method == "POST":
+        dados = _ler_form_banco()
+        if not dados["nome"]:
+            flash("Preencha o nome do banco.", "error")
+        else:
+            db = get_db()
+            db.execute(
+                "INSERT INTO bancos (nome, codigo, agencia, conta) VALUES (?, ?, ?, ?)",
+                (dados["nome"], dados["codigo"], dados["agencia"], dados["conta"]),
+            )
+            db.commit()
+            db.close()
+            flash("Banco cadastrado com sucesso.", "success")
+            return redirect(url_for("bancos_lista"))
+    return render_template("bancos_form.html", banco=None)
+
+
+@app.route("/bancos/<int:banco_id>/editar", methods=["GET", "POST"])
+@admin_required
+def bancos_editar(banco_id):
+    db = get_db()
+    banco = db.execute("SELECT * FROM bancos WHERE id = ?", (banco_id,)).fetchone()
+    if banco is None:
+        db.close()
+        flash("Banco não encontrado.", "error")
+        return redirect(url_for("bancos_lista"))
+    if request.method == "POST":
+        dados = _ler_form_banco()
+        if not dados["nome"]:
+            flash("Preencha o nome do banco.", "error")
+        else:
+            db.execute(
+                "UPDATE bancos SET nome=?, codigo=?, agencia=?, conta=? WHERE id=?",
+                (dados["nome"], dados["codigo"], dados["agencia"], dados["conta"], banco_id),
+            )
+            db.commit()
+            db.close()
+            flash("Dados do banco atualizados.", "success")
+            return redirect(url_for("bancos_lista"))
+    db.close()
+    return render_template("bancos_form.html", banco=banco)
+
+
+@app.route("/bancos/<int:banco_id>/alternar-status", methods=["POST"])
+@admin_required
+def bancos_alternar_status(banco_id):
+    db = get_db()
+    db.execute("UPDATE bancos SET ativo = 1 - ativo WHERE id = ?", (banco_id,))
+    db.commit()
+    db.close()
+    return redirect(url_for("bancos_lista"))
 
 
 # ---------- Fluxo de Caixa: Relatórios ----------

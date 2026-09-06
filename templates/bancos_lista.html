@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Bancos{% endblock %}
+{% block content %}
+<h1>Bancos</h1>
+<p class="muted" style="margin-top:-0.6rem;">Contas bancárias usadas para receber pagamentos de convênio e cartão de crédito.</p>
+{% if g.user.perfil == 'admin' %}
+<div class="actions">
+  <a class="btn" href="{{ url_for('bancos_novo') }}">+ Novo banco</a>
+</div>
+{% endif %}
+<div class="card">
+  {% if bancos %}
+  <div style="overflow-x:auto;">
+  <table class="tabela-compacta">
+    <thead>
+      <tr><th>Nome</th><th class="nowrap">Código</th><th class="nowrap">Agência</th><th class="nowrap">Conta</th><th class="nowrap">Status</th>{% if g.user.perfil == 'admin' %}<th></th>{% endif %}</tr>
+    </thead>
+    <tbody>
+      {% for b in bancos %}
+      <tr>
+        <td>{{ b.nome }}</td>
+        <td class="nowrap">{{ b.codigo or '-' }}</td>
+        <td class="nowrap">{{ b.agencia or '-' }}</td>
+        <td class="nowrap">{{ b.conta or '-' }}</td>
+        <td><span class="badge badge-compact {{ 'badge-atendida' if b.ativo else 'badge-cancelada' }}">{{ 'Ativo' if b.ativo else 'Inativo' }}</span></td>
+        {% if g.user.perfil == 'admin' %}
+        <td class="text-right nowrap">
+          <a class="btn btn-small" href="{{ url_for('bancos_editar', banco_id=b.id) }}">Editar</a>
+          <form style="display:inline" method="post" action="{{ url_for('bancos_alternar_status', banco_id=b.id) }}">
+            <button class="btn btn-small btn-secondary" type="submit">{{ 'Desativar' if b.ativo else 'Ativar' }}</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Nenhum banco cadastrado ainda.</p>
+  {% endif %}
+</div>
+{% endblock %}

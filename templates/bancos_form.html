@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if banco else 'Novo' }} Banco{% endblock %}
+{% block content %}
+<h1>{{ 'Editar' if banco else 'Novo' }} Banco</h1>
+<div class="card">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="nome">Nome do banco</label>
+        <input type="text" id="nome" name="nome" value="{{ banco.nome if banco else '' }}" placeholder="Ex.: Bradesco" required>
+      </div>
+      <div class="form-group">
+        <label for="codigo">Código (Febraban)</label>
+        <input type="text" id="codigo" name="codigo" value="{{ (banco.codigo or '') if banco else '' }}" placeholder="Ex.: 237">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="agencia">Agência</label>
+        <input type="text" id="agencia" name="agencia" value="{{ (banco.agencia or '') if banco else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="conta">Conta</label>
+        <input type="text" id="conta" name="conta" value="{{ (banco.conta or '') if banco else '' }}">
+      </div>
+    </div>
+    <button type="submit" class="btn">Salvar</button>
+    <a class="btn btn-secondary" href="{{ url_for('bancos_lista') }}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

@@ -39,6 +39,7 @@
           <a class="{{ 'active' if p.startswith('/caixa') }}" href="{{ url_for('caixa') }}">Caixa</a>
           <a class="{{ 'active' if p.startswith('/contas-receber') }}" href="{{ url_for('contas_receber') }}">Contas a Receber</a>
           <a class="{{ 'active' if p.startswith('/contas-pagar') }}" href="{{ url_for('contas_pagar') }}">Contas a Pagar</a>
+          <a class="{{ 'active' if p.startswith('/bancos') }}" href="{{ url_for('bancos_lista') }}">Bancos</a>
         </div>
       </div>
       {% endif %}

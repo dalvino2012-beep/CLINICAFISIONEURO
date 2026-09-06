@@ -110,12 +110,23 @@ CREATE TABLE IF NOT EXISTS consultas (
     criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS bancos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    codigo TEXT,
+    agencia TEXT,
+    conta TEXT,
+    ativo INTEGER NOT NULL DEFAULT 1,
+    criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS caixa_entradas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     data TEXT NOT NULL,
     descricao TEXT NOT NULL,
     valor REAL NOT NULL,
     forma_pagamento TEXT,
+    banco_id INTEGER REFERENCES bancos(id),
     usuario_id INTEGER REFERENCES usuarios(id),
     criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );

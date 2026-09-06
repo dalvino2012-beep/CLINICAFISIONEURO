@@ -61,11 +61,18 @@
         <td class="nowrap">
           <form method="post" action="{{ url_for('contas_receber_lancar', conta_id=l.id) }}"
                 style="display:flex; align-items:center; gap:0.25rem;"
-                onsubmit="return confirm('Confirmar o recebimento e lançar no Caixa?');">
+                onsubmit="return confirm('Confirmar o recebimento e lançar no Banco?');">
             <input type="date" name="data_recebimento" required
                    style="width:120px; padding:0.15rem 0.3rem; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
-            <button class="btn btn-small" type="submit">Lançar no caixa</button>
+            <select name="banco_id" required style="padding:0.15rem 0.3rem; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
+              <option value="" disabled selected>Banco…</option>
+              {% for b in bancos %}
+              <option value="{{ b.id }}">{{ (b.codigo + ' - ') if b.codigo else '' }}{{ b.nome }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-small" type="submit">Lançar no Banco</button>
           </form>
+          {% if not bancos %}<p class="muted" style="margin:0.2rem 0 0; font-size:0.72rem;">Cadastre um banco em Financeiro → Bancos.</p>{% endif %}
         </td>
         {% if g.user.perfil == 'admin' %}
         <td class="text-right nowrap">
