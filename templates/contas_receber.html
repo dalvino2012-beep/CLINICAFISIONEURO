@@ -64,10 +64,10 @@
                 onsubmit="return confirm('Confirmar o recebimento e lançar no Banco?');">
             <input type="date" name="data_recebimento" required
                    style="width:120px; padding:0.15rem 0.3rem; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
-            <select name="banco_id" required style="min-width:210px; padding:0.15rem 0.3rem; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
-              <option value="" disabled selected>Banco…</option>
+            <select name="banco_id" required title="Banco (código)" style="width:56px; padding:0.15rem 0.15rem; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
+              <option value="" disabled selected>-</option>
               {% for b in bancos %}
-              <option value="{{ b.id }}">{{ (b.codigo + ' - ') if b.codigo else '' }}{{ b.nome }}</option>
+              <option value="{{ b.id }}" title="{{ (b.codigo + ' - ') if b.codigo else '' }}{{ b.nome }}">{{ b.codigo or b.nome[:5] }}</option>
               {% endfor %}
             </select>
             <button class="btn btn-small" type="submit" style="padding:0.15rem 0.5rem; font-size:0.76rem;">Lançar no Banco</button>
