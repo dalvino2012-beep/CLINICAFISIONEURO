@@ -2285,15 +2285,15 @@ def contas_receber_excluir(conta_id):
     return redirect(url_for(info["endpoint_lista"]))
 
 
-# ---------- Contas a Receber: Relatórios (Convênio + Cartão) ----------
+# ---------- Contas a Receber: Relatórios (por modalidade, separados) ----------
 
 @app.route("/contas-receber/relatorios")
 @caixa_required
 def contas_receber_relatorios():
-    return render_template("contas_receber_relatorios.html")
+    return render_template("contas_receber_relatorios.html", modalidades=CONTAS_RECEBER_MODALIDADES)
 
 
-def _contas_receber_relatorio_dados(status):
+def _contas_receber_relatorio_dados(modalidade, status):
     hoje = date.today()
     inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
     fim = request.args.get("fim", "").strip() or hoje.isoformat()
@@ -2302,66 +2302,67 @@ def _contas_receber_relatorio_dados(status):
     db = get_db()
     if status == "aberto":
         sql = """SELECT c.* FROM contas_receber c
-                 WHERE c.lancado_em IS NULL
+                 WHERE c.modalidade = ? AND c.lancado_em IS NULL
                        AND (c.data_vencimento IS NULL OR c.data_vencimento BETWEEN ? AND ?)
-                 ORDER BY c.modalidade, c.data_vencimento IS NULL, c.data_vencimento, c.data"""
+                 ORDER BY c.data_vencimento IS NULL, c.data_vencimento, c.data"""
     else:
         sql = """SELECT c.* FROM contas_receber c
-                 WHERE c.lancado_em IS NOT NULL AND c.data_recebimento BETWEEN ? AND ?
-                 ORDER BY c.modalidade, c.data_recebimento"""
-    lancamentos = db.execute(sql, (inicio, fim)).fetchall()
+                 WHERE c.modalidade = ? AND c.lancado_em IS NOT NULL AND c.data_recebimento BETWEEN ? AND ?
+                 ORDER BY c.data_recebimento"""
+    lancamentos = db.execute(sql, (modalidade, inicio, fim)).fetchall()
     db.close()
     total = sum(l["valor"] for l in lancamentos)
     return lancamentos, total, inicio, fim
 
 
-@app.route("/contas-receber/relatorios/aberto")
+@app.route("/contas-receber/relatorios/<modalidade>/<status>")
 @caixa_required
-def contas_receber_relatorio_aberto():
-    lancamentos, total, inicio, fim = _contas_receber_relatorio_dados("aberto")
-    return render_template(
-        "contas_receber_relatorio.html", lancamentos=lancamentos, total=total, inicio=inicio, fim=fim,
-        status="aberto", titulo="Contas a Receber em Aberto",
-    )
-
-
-@app.route("/contas-receber/relatorios/liquidados")
-@caixa_required
-def contas_receber_relatorio_liquidados():
-    lancamentos, total, inicio, fim = _contas_receber_relatorio_dados("liquidado")
-    return render_template(
-        "contas_receber_relatorio.html", lancamentos=lancamentos, total=total, inicio=inicio, fim=fim,
-        status="liquidado", titulo="Contas a Receber Já Liquidadas",
-    )
-
-
-@app.route("/contas-receber/relatorios/<status>/exportar")
-@caixa_required
-def contas_receber_relatorio_exportar(status):
-    if status not in ("aberto", "liquidado"):
+def contas_receber_relatorio(modalidade, status):
+    if modalidade not in CONTAS_RECEBER_MODALIDADES or status not in ("aberto", "liquidado"):
         abort(404)
-    lancamentos, total, inicio, fim = _contas_receber_relatorio_dados(status)
-    cabecalhos = ["Modalidade", "Convênio / Paciente", "Data", "Nº Autorização", "Bandeira", "Vencimento"]
+    info = CONTAS_RECEBER_MODALIDADES[modalidade]
+    lancamentos, total, inicio, fim = _contas_receber_relatorio_dados(modalidade, status)
+    status_label = "em Aberto" if status == "aberto" else "Já Liquidadas"
+    return render_template(
+        "contas_receber_relatorio.html", lancamentos=lancamentos, total=total, inicio=inicio, fim=fim,
+        status=status, modalidade=modalidade, info=info,
+        titulo=f"{info['label']} — Contas a Receber {status_label}",
+    )
+
+
+@app.route("/contas-receber/relatorios/<modalidade>/<status>/exportar")
+@caixa_required
+def contas_receber_relatorio_exportar(modalidade, status):
+    if modalidade not in CONTAS_RECEBER_MODALIDADES or status not in ("aberto", "liquidado"):
+        abort(404)
+    info = CONTAS_RECEBER_MODALIDADES[modalidade]
+    lancamentos, total, inicio, fim = _contas_receber_relatorio_dados(modalidade, status)
+    cabecalhos = [info["campo_label"], "Data"]
+    if info["mostra_autorizacao"]:
+        cabecalhos.append("Nº Autorização")
+    if info["mostra_bandeira"]:
+        cabecalhos += ["Hora", "Bandeira"]
+    cabecalhos.append("Vencimento")
     if status == "liquidado":
         cabecalhos.append("Data Recebimento")
     cabecalhos.append("Valor (R$)")
     linhas = []
     for l in lancamentos:
-        info = CONTAS_RECEBER_MODALIDADES.get(l["modalidade"] or "convenio", CONTAS_RECEBER_MODALIDADES["convenio"])
-        linha = [
-            info["label"], l["convenio"], _data_iso_para_br(l["data"]),
-            l["autorizacao"] or "-", l["bandeira"] or "-",
-            _data_iso_para_br(l["data_vencimento"]) if l["data_vencimento"] else "-",
-        ]
+        linha = [l["convenio"], _data_iso_para_br(l["data"])]
+        if info["mostra_autorizacao"]:
+            linha.append(l["autorizacao"] or "-")
+        if info["mostra_bandeira"]:
+            linha += [l["hora"] or "-", l["bandeira"] or "-"]
+        linha.append(_data_iso_para_br(l["data_vencimento"]) if l["data_vencimento"] else "-")
         if status == "liquidado":
             linha.append(_data_iso_para_br(l["data_recebimento"]) if l["data_recebimento"] else "-")
         linha.append(round(l["valor"], 2))
         linhas.append(linha)
     linhas.append([""] * (len(cabecalhos) - 1) + [round(total, 2)])
-    nome_aba = "Em Aberto" if status == "aberto" else "Liquidados"
+    nome_aba = f"{info['label']} - {'Aberto' if status == 'aberto' else 'Liquidados'}"[:31]
     xlsx = _gerar_xlsx_simples(nome_aba, cabecalhos, linhas)
     from flask import Response
-    nome_arquivo = f"contas_receber_{status}_{inicio}_a_{fim}.xlsx"
+    nome_arquivo = f"contas_receber_{modalidade}_{status}_{inicio}_a_{fim}.xlsx"
     return Response(
         xlsx,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

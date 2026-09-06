@@ -25,15 +25,17 @@
   <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;">
     <h2 style="margin:0;">{{ inicio|data_br }} até {{ fim|data_br }}</h2>
     <a class="btn btn-small btn-secondary"
-       href="{{ url_for('contas_receber_relatorio_exportar', status=status, inicio=inicio, fim=fim) }}">⬇ Exportar para Excel</a>
+       href="{{ url_for('contas_receber_relatorio_exportar', modalidade=modalidade, status=status, inicio=inicio, fim=fim) }}">⬇ Exportar para Excel</a>
   </div>
   {% if lancamentos %}
   <div style="overflow-x:auto;">
   <table class="tabela-compacta">
     <thead>
       <tr>
-        <th class="nowrap">Modalidade</th><th>Convênio / Paciente</th><th class="nowrap">Data</th>
-        <th class="nowrap">Nº Aut.</th><th class="nowrap">Bandeira</th><th class="nowrap">Vcto.</th>
+        <th>{{ info.campo_label }}</th><th class="nowrap">Data</th>
+        {% if info.mostra_autorizacao %}<th class="nowrap">Nº Aut.</th>{% endif %}
+        {% if info.mostra_bandeira %}<th class="nowrap">Hora</th><th class="nowrap">Bandeira</th>{% endif %}
+        <th class="nowrap">Vcto.</th>
         {% if status == 'liquidado' %}<th class="nowrap">Recebido em</th>{% endif %}
         <th class="text-right nowrap">Valor</th>
       </tr>
@@ -41,11 +43,10 @@
     <tbody>
       {% for l in lancamentos %}
       <tr>
-        <td class="nowrap">{{ 'Cartão de Crédito' if l.modalidade == 'cartao' else 'Convênio' }}</td>
         <td>{{ l.convenio }}</td>
         <td class="nowrap">{{ l.data|data_br }}</td>
-        <td class="nowrap">{{ l.autorizacao or '-' }}</td>
-        <td class="nowrap">{{ l.bandeira or '-' }}</td>
+        {% if info.mostra_autorizacao %}<td class="nowrap">{{ l.autorizacao or '-' }}</td>{% endif %}
+        {% if info.mostra_bandeira %}<td class="nowrap">{{ l.hora or '-' }}</td><td class="nowrap">{{ l.bandeira or '-' }}</td>{% endif %}
         <td class="nowrap">{{ l.data_vencimento|data_br if l.data_vencimento else '-' }}</td>
         {% if status == 'liquidado' %}<td class="nowrap">{{ l.data_recebimento|data_br if l.data_recebimento else '-' }}</td>{% endif %}
         <td class="text-right nowrap">R$ {{ '%.2f'|format(l.valor) }}</td>

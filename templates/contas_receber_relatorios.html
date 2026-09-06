@@ -2,20 +2,23 @@
 {% block title %}Relatórios - Contas a Receber{% endblock %}
 {% block content %}
 <h1>Relatórios de Contas a Receber</h1>
-<p class="muted" style="margin-top:-0.6rem;">Convênio e Cartão de Crédito juntos, com a modalidade identificada em cada linha.</p>
+<p class="muted" style="margin-top:-0.6rem;">Um relatório por modalidade, sem misturar Convênio com Cartão de Crédito.</p>
 
-<div class="grid-stats">
-  <a class="card caixa-rel-card" href="{{ url_for('contas_receber_relatorio_aberto') }}">
+{% for mod, info in modalidades.items() %}
+<h2>{{ info.label }}</h2>
+<div class="grid-stats" style="margin-bottom:1rem;">
+  <a class="card caixa-rel-card" href="{{ url_for('contas_receber_relatorio', modalidade=mod, status='aberto') }}">
     <div class="caixa-rel-icone">📋</div>
     <h2>Em Aberto</h2>
-    <p class="muted">Lançamentos ainda pendentes de recebimento, por data de vencimento.</p>
+    <p class="muted">Lançamentos de {{ info.label }} ainda pendentes de recebimento, por data de vencimento.</p>
   </a>
-  <a class="card caixa-rel-card" href="{{ url_for('contas_receber_relatorio_liquidados') }}">
+  <a class="card caixa-rel-card" href="{{ url_for('contas_receber_relatorio', modalidade=mod, status='liquidado') }}">
     <div class="caixa-rel-icone">✅</div>
     <h2>Já Liquidados</h2>
-    <p class="muted">Lançamentos já recebidos e lançados no Caixa, por data de recebimento.</p>
+    <p class="muted">Lançamentos de {{ info.label }} já recebidos e lançados no Caixa, por data de recebimento.</p>
   </a>
 </div>
+{% endfor %}
 
 <div class="actions">
   <a class="btn btn-secondary" href="{{ url_for('contas_receber') }}">← Voltar a Contas a Receber</a>
