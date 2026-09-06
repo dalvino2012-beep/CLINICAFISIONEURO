@@ -42,7 +42,7 @@
       {% for l in lancamentos %}
       <tr>
         <td class="nowrap">{{ 'Cartão de Crédito' if l.modalidade == 'cartao' else 'Convênio' }}</td>
-        <td>{{ l.convenio }}</td>
+        <td>{{ (l.bandeira + ' - ' + l.convenio) if (l.modalidade == 'cartao' and l.bandeira) else l.convenio }}</td>
         <td class="nowrap">{{ l.data|data_br }}</td>
         <td class="nowrap">{{ l.autorizacao or '-' }}</td>
         <td class="nowrap">{{ l.bandeira or '-' }}</td>
