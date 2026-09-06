@@ -30,6 +30,10 @@
           <form style="display:inline" method="post" action="{{ url_for('bancos_alternar_status', banco_id=b.id) }}">
             <button class="btn btn-small btn-secondary" type="submit">{{ 'Desativar' if b.ativo else 'Ativar' }}</button>
           </form>
+          <form style="display:inline" method="post" action="{{ url_for('bancos_excluir', banco_id=b.id) }}"
+                onsubmit="return confirm('Excluir este banco definitivamente? Só é possível se não houver lançamentos vinculados a ele.');">
+            <button class="btn btn-small btn-secondary" type="submit">Excluir</button>
+          </form>
           {% endif %}
         </td>
       </tr>

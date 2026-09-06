@@ -2254,7 +2254,7 @@ def contas_receber_lancar(conta_id):
         db.close()
         flash("Informe a data do recebimento e o código do banco para lançar.", "error")
         return redirect(url_for(info["endpoint_lista"]))
-    banco = db.execute("SELECT * FROM bancos WHERE codigo = ?", (banco_codigo,)).fetchone()
+    banco = db.execute("SELECT * FROM bancos WHERE codigo = ? AND ativo = 1", (banco_codigo,)).fetchone()
     if banco is None:
         db.close()
         flash(f"Não existe banco cadastrado com o código {banco_codigo}.", "error")
@@ -2576,6 +2576,22 @@ def bancos_alternar_status(banco_id):
     db.execute("UPDATE bancos SET ativo = 1 - ativo WHERE id = ?", (banco_id,))
     db.commit()
     db.close()
+    return redirect(url_for("bancos_lista"))
+
+
+@app.route("/bancos/<int:banco_id>/excluir", methods=["POST"])
+@admin_required
+def bancos_excluir(banco_id):
+    db = get_db()
+    em_uso = db.execute("SELECT COUNT(*) c FROM caixa_entradas WHERE banco_id = ?", (banco_id,)).fetchone()["c"]
+    if em_uso:
+        db.close()
+        flash("Este banco já tem lançamentos vinculados e não pode ser excluído — desative-o em vez disso.", "error")
+        return redirect(url_for("bancos_lista"))
+    db.execute("DELETE FROM bancos WHERE id = ?", (banco_id,))
+    db.commit()
+    db.close()
+    flash("Banco excluído.", "success")
     return redirect(url_for("bancos_lista"))
 
 
