@@ -2579,6 +2579,45 @@ def bancos_alternar_status(banco_id):
     return redirect(url_for("bancos_lista"))
 
 
+@app.route("/bancos/<int:banco_id>/extrato")
+@caixa_required
+def bancos_extrato(banco_id):
+    db = get_db()
+    banco = db.execute("SELECT * FROM bancos WHERE id = ?", (banco_id,)).fetchone()
+    if banco is None:
+        db.close()
+        flash("Banco não encontrado.", "error")
+        return redirect(url_for("bancos_lista"))
+    hoje = date.today()
+    inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
+    fim = request.args.get("fim", "").strip() or hoje.isoformat()
+    if fim < inicio:
+        inicio, fim = fim, inicio
+    entradas = db.execute(
+        """SELECT data, descricao, valor, criado_em FROM caixa_entradas
+           WHERE banco_id = ? AND data BETWEEN ? AND ?
+           ORDER BY data, criado_em""",
+        (banco_id, inicio, fim),
+    ).fetchall()
+    db.close()
+
+    saldo = 0.0
+    total_entradas = 0.0
+    movimentos = []
+    for e in entradas:
+        saldo += e["valor"]
+        total_entradas += e["valor"]
+        movimentos.append({
+            "data": e["data"], "historico": e["descricao"], "entrada": e["valor"], "saida": None, "saldo": saldo,
+        })
+
+    return render_template(
+        "bancos_extrato.html", banco=banco, movimentos=movimentos,
+        total_entradas=total_entradas, total_saidas=0.0, saldo=saldo,
+        inicio=inicio, fim=fim,
+    )
+
+
 # ---------- Fluxo de Caixa: Relatórios ----------
 
 NOMES_MES_ABREV = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]

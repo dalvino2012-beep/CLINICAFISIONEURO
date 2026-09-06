@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Extrato - {{ banco.nome }}{% endblock %}
+{% block content %}
+<h1>Extrato do Banco</h1>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <label for="inicio" style="margin:0; font-weight:600; color:var(--primary-dark);">Período:</label>
+    <input type="date" id="inicio" name="inicio" value="{{ inicio }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <span>até</span>
+    <input type="date" id="fim" name="fim" value="{{ fim }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <button class="btn btn-small" type="submit">Filtrar</button>
+  </form>
+</div>
+
+<div class="grid-stats caixa-valores">
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(total_entradas) }}</div><div class="label">Total de entradas</div></div>
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(total_saidas) }}</div><div class="label">Total de saídas</div></div>
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(saldo) }}</div><div class="label">Saldo do período</div></div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">{{ inicio|data_br }} até {{ fim|data_br }}</h2>
+  {% if movimentos %}
+  <div style="overflow-x:auto;">
+  <table class="tabela-compacta">
+    <thead>
+      <tr>
+        <th class="nowrap">Cód.</th><th class="nowrap">Nome</th><th class="nowrap">Agência</th><th class="nowrap">C/Corrente</th>
+        <th class="nowrap">Data</th><th>Histórico</th>
+        <th class="text-right nowrap">Entrada</th><th class="text-right nowrap">Saída</th><th class="text-right nowrap">Saldo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in movimentos %}
+      <tr>
+        <td class="nowrap">{{ banco.codigo or '-' }}</td>
+        <td class="nowrap">{{ banco.nome }}</td>
+        <td class="nowrap">{{ banco.agencia or '-' }}</td>
+        <td class="nowrap">{{ banco.conta or '-' }}</td>
+        <td class="nowrap">{{ m.data|data_br }}</td>
+        <td class="nowrap descricao-expandivel" title="Duplo clique para ver o histórico completo"
+            data-full="{{ m.historico }}" data-short="{{ (m.historico[:30] + '…') if m.historico|length > 30 else m.historico }}"
+            ondblclick="toggleDescricao(this)">{{ (m.historico[:30] + '…') if m.historico|length > 30 else m.historico }}</td>
+        <td class="text-right nowrap">{{ 'R$ %.2f'|format(m.entrada) if m.entrada else '-' }}</td>
+        <td class="text-right nowrap">{{ 'R$ %.2f'|format(m.saida) if m.saida else '-' }}</td>
+        <td class="text-right nowrap">R$ {{ '%.2f'|format(m.saldo) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Nenhuma movimentação encontrada nesse período para este banco.</p>
+  {% endif %}
+</div>
+
+<div class="actions">
+  <a class="btn btn-secondary" href="{{ url_for('bancos_lista') }}">← Voltar a Bancos</a>
+</div>
+<script>
+  function toggleDescricao(el) {
+    var expandido = el.classList.toggle('expandido');
+    el.textContent = expandido ? el.dataset.full : el.dataset.short;
+    el.classList.toggle('nowrap', !expandido);
+  }
+</script>
+{% endblock %}
