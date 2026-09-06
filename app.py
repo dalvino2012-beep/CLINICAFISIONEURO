@@ -2367,6 +2367,31 @@ def caixa_relatorios():
     return render_template("caixa_relatorios.html")
 
 
+@app.route("/caixa/relatorios/recebimentos")
+@caixa_required
+def caixa_relatorio_recebimentos():
+    hoje = date.today()
+    inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
+    fim = request.args.get("fim", "").strip() or hoje.isoformat()
+    if fim < inicio:
+        inicio, fim = fim, inicio
+    db = get_db()
+    recebimentos = db.execute(
+        """SELECT s.data, s.criado_em, s.valor, p.nome AS paciente_nome, m.nome AS medico_nome
+           FROM senhas s
+           LEFT JOIN pacientes p ON p.id = s.paciente_id
+           LEFT JOIN medicos m ON m.id = s.medico_id
+           WHERE s.valor IS NOT NULL AND s.data BETWEEN ? AND ?
+           ORDER BY s.data, s.criado_em""",
+        (inicio, fim),
+    ).fetchall()
+    db.close()
+    total = sum(r["valor"] for r in recebimentos)
+    return render_template(
+        "caixa_relatorio_recebimentos.html", recebimentos=recebimentos, total=total, inicio=inicio, fim=fim,
+    )
+
+
 def _parse_periodo_fechamento():
     """Lê tipo (dia/mês) e data da query string e devolve (tipo, data_sel, inicio, fim)."""
     hoje = date.today()

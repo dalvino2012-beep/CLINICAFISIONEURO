@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Recebimentos por Atendimento{% endblock %}
+{% block content %}
+<h1>Recebimentos por Atendimento</h1>
+<p class="muted" style="margin-top:-0.6rem;">Controle externo dos valores recebidos: paciente, data, horário, médico(a) atendente e valor.</p>
+
+<div class="card" style="background:#eaf3f0; border-color:#bcd;">
+  <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
+    <label for="inicio" style="margin:0; font-weight:600; color:var(--primary-dark);">Período:</label>
+    <input type="date" id="inicio" name="inicio" value="{{ inicio }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <span>até</span>
+    <input type="date" id="fim" name="fim" value="{{ fim }}" onchange="this.form.submit()"
+           style="padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px;">
+    <button class="btn btn-small" type="submit">Filtrar</button>
+  </form>
+</div>
+
+<div class="grid-stats caixa-valores">
+  <div class="stat"><div class="num">R$ {{ '%.2f'|format(total) }}</div><div class="label">Total recebido no período</div></div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">Atendimentos de {{ inicio|data_br }} até {{ fim|data_br }}</h2>
+  {% if recebimentos %}
+  <div style="overflow-x:auto;">
+  <table class="tabela-compacta">
+    <thead>
+      <tr><th>Paciente</th><th class="nowrap">Data</th><th class="nowrap">Horário</th><th>Médico(a) atendente</th><th class="text-right nowrap">Valor</th></tr>
+    </thead>
+    <tbody>
+      {% for r in recebimentos %}
+      <tr>
+        <td>{{ r.paciente_nome or 'Paciente não identificado' }}</td>
+        <td class="nowrap">{{ r.data|data_br }}</td>
+        <td class="nowrap">{{ r.criado_em[11:16] if r.criado_em else '-' }}</td>
+        <td>{{ r.medico_nome or '-' }}</td>
+        <td class="text-right nowrap">R$ {{ '%.2f'|format(r.valor) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Nenhum recebimento encontrado nesse período.</p>
+  {% endif %}
+</div>
+
+<div class="actions">
+  <a class="btn btn-secondary" href="{{ url_for('caixa_relatorios') }}">← Voltar aos Relatórios</a>
+</div>
+{% endblock %}

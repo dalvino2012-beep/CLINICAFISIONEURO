@@ -20,6 +20,11 @@
     <h2>Comparativo mensal</h2>
     <p class="muted">Gráfico com a evolução de entradas, saídas e saldo mês a mês.</p>
   </a>
+  <a class="card caixa-rel-card" href="{{ url_for('caixa_relatorio_recebimentos') }}">
+    <div class="caixa-rel-icone">🧍</div>
+    <h2>Recebimentos por atendimento</h2>
+    <p class="muted">Paciente, data, horário, médico(a) atendente e valor — para controle externo dos recebimentos.</p>
+  </a>
   <a class="card caixa-rel-card" href="{{ url_for('caixa') }}">
     <div class="caixa-rel-icone">⬇️</div>
     <h2>Exportar planilha (Excel)</h2>
