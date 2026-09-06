@@ -2730,6 +2730,103 @@ def bancos_extrato(banco_id):
     )
 
 
+@app.route("/bancos/<int:banco_id>/extrato/pdf")
+@caixa_required
+def bancos_extrato_pdf(banco_id):
+    db = get_db()
+    banco = db.execute("SELECT * FROM bancos WHERE id = ?", (banco_id,)).fetchone()
+    db.close()
+    if banco is None:
+        flash("Banco não encontrado.", "error")
+        return redirect(url_for("bancos_lista"))
+    hoje = date.today()
+    inicio = request.args.get("inicio", "").strip() or date(hoje.year, hoje.month, 1).isoformat()
+    fim = request.args.get("fim", "").strip() or hoje.isoformat()
+    if fim < inicio:
+        inicio, fim = fim, inicio
+    movimentos, total_entradas, total_saidas, saldo = _bancos_extrato_dados(banco_id, inicio, fim)
+    pdf = _gerar_pdf_extrato_banco(banco, inicio, fim, movimentos, total_entradas, total_saidas, saldo)
+    from flask import Response
+    nome = f"extrato_{banco['nome']}_{inicio}_a_{fim}.pdf".replace(" ", "_")
+    return Response(pdf, mimetype="application/pdf",
+                    headers={"Content-Disposition": f"inline; filename={nome}"})
+
+
+def _gerar_pdf_extrato_banco(banco, inicio, fim, movimentos, total_entradas, total_saidas, saldo):
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
+    from reportlab.lib import colors
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+                            topMargin=20 * mm, bottomMargin=20 * mm)
+    styles = getSampleStyleSheet()
+    h_tit = ParagraphStyle("t", parent=styles["Heading2"], fontSize=14, textColor=colors.HexColor("#0B5FA5"), spaceBefore=14, spaceAfter=4)
+    h_info = ParagraphStyle("i", parent=styles["Normal"], fontSize=10, textColor=colors.HexColor("#333333"), spaceAfter=4)
+    h_cell = ParagraphStyle("cel", parent=styles["Normal"], fontSize=8.5, leading=11)
+    h_cell_r = ParagraphStyle("celr", parent=h_cell, alignment=2)
+
+    identificacao = banco["nome"]
+    if banco["codigo"]:
+        identificacao += f" (código {banco['codigo']})"
+
+    story = [
+        _cabecalho_pdf(),
+        Spacer(1, 6), HRFlowable(width="100%", color=colors.HexColor("#dde5e2")), Spacer(1, 4),
+        Paragraph("EXTRATO BANCÁRIO", h_tit),
+        Paragraph(f"Banco: {identificacao}", h_info),
+    ]
+    if banco["agencia"] or banco["conta"]:
+        story.append(Paragraph(f"Agência: {banco['agencia'] or '-'}&nbsp;&nbsp;&nbsp;Conta: {banco['conta'] or '-'}", h_info))
+    story.append(Paragraph(f"Período: {_data_iso_para_br(inicio)} a {_data_iso_para_br(fim)}", h_info))
+    story.append(Spacer(1, 6))
+
+    if movimentos:
+        dados_tabela = [["Data", "Histórico", "Entrada (R$)", "Saída (R$)", "Saldo (R$)"]]
+        for m in movimentos:
+            dados_tabela.append([
+                _data_iso_para_br(m["data"]),
+                Paragraph(m["historico"], h_cell),
+                Paragraph(f"{m['entrada']:,.2f}" if m["entrada"] else "-", h_cell_r),
+                Paragraph(f"{m['saida']:,.2f}" if m["saida"] else "-", h_cell_r),
+                Paragraph(f"{m['saldo']:,.2f}", h_cell_r),
+            ])
+        tabela = Table(dados_tabela, colWidths=[18 * mm, None, 26 * mm, 26 * mm, 28 * mm], repeatRows=1)
+        tabela.setStyle(TableStyle([
+            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B5FA5")),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f7f6")]),
+        ]))
+        story += [tabela, Spacer(1, 10)]
+    else:
+        story += [Paragraph("Nenhuma movimentação nesse período.", h_info)]
+
+    totais = Table([
+        ["Total de entradas", f"R$ {total_entradas:,.2f}"],
+        ["Total de saídas", f"R$ {total_saidas:,.2f}"],
+        ["Saldo do período", f"R$ {saldo:,.2f}"],
+    ], colWidths=[60 * mm, 40 * mm])
+    totais.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 10.5),
+        ("FONTNAME", (0, 2), (-1, 2), "Helvetica-Bold"),
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("LINEABOVE", (0, 2), (-1, 2), 0.8, colors.HexColor("#333333")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story += [totais]
+
+    doc.build(story, onFirstPage=_faixa_azul, onLaterPages=_faixa_azul)
+    return buf.getvalue()
+
+
 # ---------- Fluxo de Caixa: Relatórios ----------
 
 NOMES_MES_ABREV = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]

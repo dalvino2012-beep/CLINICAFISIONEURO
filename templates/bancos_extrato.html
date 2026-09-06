@@ -27,7 +27,11 @@
 </div>
 
 <div class="card">
-  <h2 style="margin-top:0;">{{ inicio|data_br }} até {{ fim|data_br }}</h2>
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;">
+    <h2 style="margin:0;">{{ inicio|data_br }} até {{ fim|data_br }}</h2>
+    <a class="btn btn-small btn-secondary" target="_blank"
+       href="{{ url_for('bancos_extrato_pdf', banco_id=banco.id, inicio=inicio, fim=fim) }}">🖨️ Imprimir extrato</a>
+  </div>
   {% if movimentos %}
   <div style="overflow-x:auto;">
   <table class="tabela-compacta">
