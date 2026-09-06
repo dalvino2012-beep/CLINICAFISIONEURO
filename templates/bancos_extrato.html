@@ -6,6 +6,8 @@
 <div class="actions" style="margin-bottom:0.8rem;">
   <a class="btn" href="{{ url_for('bancos_deposito', banco_id=banco.id) }}">+ Novo depósito</a>
   <a class="btn btn-secondary" href="{{ url_for('bancos_saida', banco_id=banco.id) }}">+ Nova saída</a>
+  <a class="btn btn-secondary" target="_blank"
+     href="{{ url_for('bancos_extrato_pdf', banco_id=banco.id, inicio=inicio, fim=fim) }}">🖨️ Imprimir extrato</a>
 </div>
 
 <div class="card" style="background:#eaf3f0; border-color:#bcd;">
@@ -27,11 +29,7 @@
 </div>
 
 <div class="card">
-  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;">
-    <h2 style="margin:0;">{{ inicio|data_br }} até {{ fim|data_br }}</h2>
-    <a class="btn btn-small btn-secondary" target="_blank"
-       href="{{ url_for('bancos_extrato_pdf', banco_id=banco.id, inicio=inicio, fim=fim) }}">🖨️ Imprimir extrato</a>
-  </div>
+  <h2 style="margin-top:0;">{{ inicio|data_br }} até {{ fim|data_br }}</h2>
   {% if movimentos %}
   <div style="overflow-x:auto;">
   <table class="tabela-compacta">

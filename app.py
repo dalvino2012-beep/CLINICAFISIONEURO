@@ -953,6 +953,25 @@ def _cabecalho_pdf():
     return t
 
 
+def _cabecalho_pdf_so_nome():
+    """Igual a _cabecalho_pdf, mas sem a linha de endereço/telefone abaixo do logo."""
+    from reportlab.platypus import Table, TableStyle, Image as RLImage
+    from reportlab.lib.units import mm
+    if LOGO_AZUL.exists():
+        logo = RLImage(str(LOGO_AZUL), width=58 * mm, height=17.4 * mm)
+    else:
+        logo = _logo_drawing(46)
+    t = Table([[logo]])
+    t.hAlign = "LEFT"
+    t.setStyle(TableStyle([
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    return t
+
+
 def _doc_pdf(buf):
     from reportlab.lib.units import mm, cm
     from reportlab.platypus import SimpleDocTemplate
@@ -2774,7 +2793,7 @@ def _gerar_pdf_extrato_banco(banco, inicio, fim, movimentos, total_entradas, tot
         identificacao += f" (código {banco['codigo']})"
 
     story = [
-        _cabecalho_pdf(),
+        _cabecalho_pdf_so_nome(),
         Spacer(1, 6), HRFlowable(width="100%", color=colors.HexColor("#dde5e2")), Spacer(1, 4),
         Paragraph("EXTRATO BANCÁRIO", h_tit),
         Paragraph(f"Banco: {identificacao}", h_info),
