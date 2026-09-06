@@ -29,7 +29,7 @@
   <div style="overflow-x:auto;">
   <table class="tabela-compacta">
     <thead>
-      <tr><th class="nowrap">Data</th><th class="nowrap">Categoria</th><th>Descrição</th><th class="text-right nowrap">Valor</th><th class="nowrap">Forma de pagamento</th>{% if g.user.perfil == 'admin' %}<th></th>{% endif %}</tr>
+      <tr><th class="nowrap">Data</th><th class="nowrap">Categoria</th><th>Descrição</th><th class="text-right nowrap">Valor</th><th class="nowrap" style="line-height:1.1;">Forma<br>pagamento</th>{% if g.user.perfil == 'admin' %}<th></th>{% endif %}</tr>
     </thead>
     <tbody>
       {% for c in contas %}
