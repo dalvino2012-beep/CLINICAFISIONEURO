@@ -2249,16 +2249,17 @@ def contas_receber_lancar(conta_id):
         flash("Este lançamento já havia sido enviado ao caixa.", "error")
         return redirect(url_for(info["endpoint_lista"]))
     data_recebimento = request.form.get("data_recebimento", "").strip()
-    banco_id = request.form.get("banco_id", "").strip()
-    if not data_recebimento or not banco_id:
+    banco_codigo = request.form.get("banco_codigo", "").strip()
+    if not data_recebimento or not banco_codigo:
         db.close()
-        flash("Informe a data do recebimento e o banco para lançar.", "error")
+        flash("Informe a data do recebimento e o código do banco para lançar.", "error")
         return redirect(url_for(info["endpoint_lista"]))
-    banco = db.execute("SELECT * FROM bancos WHERE id = ?", (banco_id,)).fetchone()
+    banco = db.execute("SELECT * FROM bancos WHERE codigo = ?", (banco_codigo,)).fetchone()
     if banco is None:
         db.close()
-        flash("Banco inválido.", "error")
+        flash(f"Não existe banco cadastrado com o código {banco_codigo}.", "error")
         return redirect(url_for(info["endpoint_lista"]))
+    banco_id = banco["id"]
     descricao = f"{info['label']}: {conta['convenio']}"
     if conta["autorizacao"]:
         descricao += f" (aut. {conta['autorizacao']})"
