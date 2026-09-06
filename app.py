@@ -2348,9 +2348,8 @@ def contas_receber_relatorio_exportar(status):
     linhas = []
     for l in lancamentos:
         info = CONTAS_RECEBER_MODALIDADES.get(l["modalidade"] or "convenio", CONTAS_RECEBER_MODALIDADES["convenio"])
-        identificacao = f"{l['bandeira']} - {l['convenio']}" if (l["modalidade"] == "cartao" and l["bandeira"]) else l["convenio"]
         linha = [
-            info["label"], identificacao, _data_iso_para_br(l["data"]),
+            info["label"], l["convenio"], _data_iso_para_br(l["data"]),
             l["autorizacao"] or "-", l["bandeira"] or "-",
             _data_iso_para_br(l["data_vencimento"]) if l["data_vencimento"] else "-",
         ]
