@@ -2595,6 +2595,48 @@ def bancos_excluir(banco_id):
     return redirect(url_for("bancos_lista"))
 
 
+@app.route("/bancos/<int:banco_id>/deposito", methods=["GET", "POST"])
+@caixa_required
+def bancos_deposito(banco_id):
+    db = get_db()
+    banco = db.execute("SELECT * FROM bancos WHERE id = ? AND ativo = 1", (banco_id,)).fetchone()
+    if banco is None:
+        db.close()
+        flash("Banco não encontrado ou inativo.", "error")
+        return redirect(url_for("bancos_lista"))
+    if request.method == "POST":
+        data_ = request.form.get("data", "").strip() or date.today().isoformat()
+        valor = request.form.get("valor", "").replace(",", ".").strip()
+        observacao = request.form.get("observacao", "").strip()
+        try:
+            valor = float(valor)
+        except ValueError:
+            valor = None
+        if not valor:
+            db.close()
+            flash("Informe um valor válido.", "error")
+            return redirect(url_for("bancos_deposito", banco_id=banco_id))
+        descricao_base = f"Depósito em espécie — Banco {banco['codigo'] + ' ' if banco['codigo'] else ''}{banco['nome']}"
+        if observacao:
+            descricao_base += f" ({observacao})"
+        db.execute(
+            """INSERT INTO caixa_saidas (data, descricao, categoria, valor, forma_pagamento, usuario_id)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (data_, descricao_base, "Depósito bancário", valor, "Dinheiro", g.user["id"]),
+        )
+        db.execute(
+            """INSERT INTO caixa_entradas (data, descricao, valor, forma_pagamento, banco_id, usuario_id)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (data_, descricao_base, valor, "Dinheiro", banco_id, g.user["id"]),
+        )
+        db.commit()
+        db.close()
+        flash("Depósito registrado: saiu do Caixa e entrou no Banco.", "success")
+        return redirect(url_for("bancos_extrato", banco_id=banco_id))
+    db.close()
+    return render_template("bancos_deposito_form.html", banco=banco, hoje=date.today().isoformat())
+
+
 @app.route("/bancos/<int:banco_id>/extrato")
 @caixa_required
 def bancos_extrato(banco_id):

@@ -25,6 +25,7 @@
         <td><span class="badge badge-compact {{ 'badge-atendida' if b.ativo else 'badge-cancelada' }}">{{ 'Ativo' if b.ativo else 'Inativo' }}</span></td>
         <td class="text-right nowrap">
           <a class="btn btn-small" href="{{ url_for('bancos_extrato', banco_id=b.id) }}">Extrato</a>
+          {% if b.ativo %}<a class="btn btn-small" href="{{ url_for('bancos_deposito', banco_id=b.id) }}">+ Depósito</a>{% endif %}
           {% if g.user.perfil == 'admin' %}
           <a class="btn btn-small" href="{{ url_for('bancos_editar', banco_id=b.id) }}">Editar</a>
           <form style="display:inline" method="post" action="{{ url_for('bancos_alternar_status', banco_id=b.id) }}">

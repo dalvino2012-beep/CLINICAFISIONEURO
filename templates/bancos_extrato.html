@@ -3,6 +3,10 @@
 {% block content %}
 <h1>Extrato do Banco — {{ banco.nome }}{% if banco.codigo %} ({{ banco.codigo }}){% endif %}</h1>
 
+<div class="actions" style="margin-bottom:0.8rem;">
+  <a class="btn" href="{{ url_for('bancos_deposito', banco_id=banco.id) }}">+ Novo depósito</a>
+</div>
+
 <div class="card" style="background:#eaf3f0; border-color:#bcd;">
   <form method="get" style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:0;">
     <label for="inicio" style="margin:0; font-weight:600; color:var(--primary-dark);">Período:</label>

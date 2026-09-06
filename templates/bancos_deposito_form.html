@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Novo Depósito{% endblock %}
+{% block content %}
+<h1>Novo depósito — {{ banco.nome }}{% if banco.codigo %} ({{ banco.codigo }}){% endif %}</h1>
+<p class="muted" style="margin-top:-0.6rem;">Registra a saída do valor em espécie do Caixa e a entrada correspondente nesse banco.</p>
+<div class="card">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="data">Data</label>
+        <input type="date" id="data" name="data" value="{{ hoje }}" required>
+      </div>
+      <div class="form-group">
+        <label for="valor">Valor depositado (R$)</label>
+        <input type="text" id="valor" name="valor" inputmode="decimal" placeholder="Ex.: 300,00" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="observacao">Observação (opcional)</label>
+      <input type="text" id="observacao" name="observacao" placeholder="Ex.: depósito parcial do caixa do dia">
+    </div>
+    <button type="submit" class="btn">Salvar</button>
+    <a class="btn btn-secondary" href="{{ url_for('bancos_extrato', banco_id=banco.id) }}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}
