@@ -255,6 +255,8 @@ th { color: var(--muted); font-weight: 600; }
 
 .tabela-compacta td, .tabela-compacta th { padding: 0.06rem 0.7rem; font-size: 0.82rem; line-height: 1.15; }
 .tabela-compacta .btn-small { padding: 0.15rem 0.55rem; font-size: 0.8rem; }
+.descricao-expandivel { cursor: pointer; border-bottom: 1px dotted var(--muted); }
+.descricao-expandivel.expandido { white-space: normal; word-break: break-word; }
 
 .btn {
   display: inline-block;

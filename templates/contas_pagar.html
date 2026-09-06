@@ -29,16 +29,18 @@
   <div style="overflow-x:auto;">
   <table class="tabela-compacta">
     <thead>
-      <tr><th class="nowrap">Data</th><th class="nowrap">Categoria</th><th>Descrição</th><th class="nowrap">Pagamento</th><th class="text-right nowrap">Valor</th>{% if g.user.perfil == 'admin' %}<th></th>{% endif %}</tr>
+      <tr><th class="nowrap">Data</th><th class="nowrap">Categoria</th><th>Descrição</th><th class="text-right nowrap">Valor</th><th class="nowrap">Pagamento</th>{% if g.user.perfil == 'admin' %}<th></th>{% endif %}</tr>
     </thead>
     <tbody>
       {% for c in contas %}
       <tr>
         <td class="nowrap">{{ c.data|data_br }}</td>
         <td class="nowrap" title="{{ c.categoria or '' }}">{{ ((c.categoria[:14] + '…') if c.categoria|length > 14 else c.categoria) if c.categoria else '-' }}</td>
-        <td class="nowrap" title="{{ c.descricao }}">{{ (c.descricao[:35] + '…') if c.descricao|length > 35 else c.descricao }}</td>
-        <td class="nowrap" title="{{ c.forma_pagamento or '' }}">{{ ((c.forma_pagamento[:12] + '…') if c.forma_pagamento|length > 12 else c.forma_pagamento) if c.forma_pagamento else '-' }}</td>
+        <td class="nowrap descricao-expandivel" title="Duplo clique para ver a descrição completa"
+            data-full="{{ c.descricao }}" data-short="{{ (c.descricao[:35] + '…') if c.descricao|length > 35 else c.descricao }}"
+            ondblclick="toggleDescricao(this)">{{ (c.descricao[:35] + '…') if c.descricao|length > 35 else c.descricao }}</td>
         <td class="text-right nowrap">R$ {{ '%.2f'|format(c.valor) }}</td>
+        <td class="nowrap" title="{{ c.forma_pagamento or '' }}">{{ ((c.forma_pagamento[:12] + '…') if c.forma_pagamento|length > 12 else c.forma_pagamento) if c.forma_pagamento else '-' }}</td>
         {% if g.user.perfil == 'admin' %}
         <td class="text-right nowrap">
           <form method="post" action="{{ url_for('contas_pagar_excluir', conta_id=c.id) }}" style="display:inline"
@@ -56,4 +58,11 @@
   <p class="muted">Nenhuma conta a pagar cadastrada nesse período.</p>
   {% endif %}
 </div>
+<script>
+  function toggleDescricao(el) {
+    var expandido = el.classList.toggle('expandido');
+    el.textContent = expandido ? el.dataset.full : el.dataset.short;
+    el.classList.toggle('nowrap', !expandido);
+  }
+</script>
 {% endblock %}
